@@ -5,6 +5,11 @@ interurbains, avec Ouagadougou–Bobo-Dioulasso comme ligne pilote envisagée.
 Deux démonstrations indépendantes sont disponibles : la maquette web initiale et
 une première base Flutter. Elles utilisent uniquement des données fictives.
 
+Pour préparer les premiers retours, utiliser le
+[guide des tests utilisateurs](docs/guide-tests-utilisateurs.md). Il distingue
+le test d'ergonomie de la maquette de l'étude de marché plus large avant le
+lancement.
+
 ## Essayer la maquette web
 
 Ouvrir `index.html` dans un navigateur. Aucun compte, serveur ou installation n'est nécessaire.
@@ -73,8 +78,10 @@ ou de remboursement n'est appliquée.
 
 ## Prochaines étapes avant un pilote réel
 
-1. Valider le périmètre et les règles avec des passagers et conducteurs : prix
-   plafonds, annulations, remboursements et acceptation des demandes.
+1. Tester les parcours de démonstration avec des passagers et conducteurs
+   (voir le [guide des tests](docs/guide-tests-utilisateurs.md)), puis valider
+   les règles : prix plafonds, annulations, remboursements et acceptation des
+   demandes. En parallèle, mener l'étude de marché prévue dans la checklist.
 2. Créer les comptes de l'entreprise et un projet Supabase. Concevoir et tester
    la base PostgreSQL, les autorisations, les réservations atomiques et la
    protection des données avant de connecter l'application ; aucun service
