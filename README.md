@@ -41,6 +41,8 @@ Le premier déploiement peut prendre quelques minutes. Suivre son état dans
 l'onglet **Actions** du dépôt. Si Pages n'est pas encore activé pour ce dépôt,
 choisir **Settings → Pages → Build and deployment → GitHub Actions**.
 Le site public est une démonstration ; le code du dépôt est également public.
+Le workflow utilise Flutter 3.44.6 afin d'aligner la compilation sur la version
+validée localement.
 
 ### Accès direct par Flutter sur le même Wi-Fi
 
