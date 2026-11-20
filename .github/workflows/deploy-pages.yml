@@ -37,6 +37,16 @@ jobs:
         working-directory: mobile
         run: flutter test
 
+      - name: Check Google Maps Embed key
+        env:
+          GOOGLE_MAPS_EMBED_API_KEY: ${{ secrets.GOOGLE_MAPS_EMBED_API_KEY || secrets.GOOGLE_MAPS_API }}
+        run: |
+          if [ -n "$GOOGLE_MAPS_EMBED_API_KEY" ]; then
+            echo "Google Maps Embed key is configured."
+          else
+            echo "::warning::Google Maps Embed key is not available to this workflow."
+          fi
+
       - name: Build web app
         working-directory: mobile
         env:
