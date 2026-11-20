@@ -65,8 +65,12 @@ Cette méthode sert au développement et ne rend pas le site accessible sur Inte
 Le parcours passager est accessible dans l’onglet « Voyager » ou depuis
 « Prendre un trajet » dans le profil ; il permet de rechercher par villes, date
 et nombre de places, de consulter les détails, puis de simuler une réservation
-et son annulation. Le conducteur peut ouvrir « Publier » ou « Proposer un
-trajet » depuis le profil. L’application inclut aussi un profil de démonstration,
+ou une demande en attente du conducteur, puis son annulation. Le conducteur
+peut publier un trajet avec point de rendez-vous, notes, équipements et choix
+entre demande manuelle ou acceptation automatique. « Mes trajets » affiche les
+demandes et leur statut ; l'exemple conducteur préchargé permet d'essayer
+l'acceptation ou le refus d'une demande. Tous ces états sont uniquement locaux
+et fictifs. L’application inclut aussi un profil de démonstration,
 un parcours
 « Comment ça marche ? », une FAQ, un centre de sécurité et un formulaire de
 signalement qui confirme explicitement qu'il n'envoie rien. Les disponibilités

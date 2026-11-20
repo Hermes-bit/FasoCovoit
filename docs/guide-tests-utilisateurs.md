@@ -43,7 +43,7 @@ personnelle. Ne pas expliquer comment fonctionne le service pendant l'exercice.
 2. « Choisissez un trajet et trouvez l'heure et le lieu de départ, le conducteur,
    les places disponibles et le prix par personne. »
 3. « Simulez la réservation de deux places. Où retrouvez-vous votre réservation ?
-   Comment l'annuleriez-vous ? »
+   Est-elle confirmée ou en attente du conducteur ? Comment l'annuleriez-vous ? »
 
 ### Parcours conducteur
 
@@ -52,9 +52,13 @@ personnelle. Ne pas expliquer comment fonctionne le service pendant l'exercice.
    Publiez-le dans la démonstration. »
 5. « Où retrouvez-vous le trajet que vous venez de publier ? Quelles informations
    voudriez-vous préciser avant de proposer un vrai trajet ? »
+6. « Dans l’exemple conducteur déjà présent, retrouvez la demande en attente.
+   Acceptez-la, puis expliquez ce que signifie le statut affiché. Recommencez
+   avec une démonstration réinitialisée et refusez la demande. »
 
-La publication n'est visible que dans la session et disparaît au rechargement.
-Réinitialiser la maquette avant la session suivante.
+La publication et les décisions de réservation ne sont visibles que dans la
+session et disparaissent au rechargement. Réinitialiser la démonstration avant
+la session suivante. Aucun paiement, remboursement ou message n'est déclenché.
 
 ### Questions de fin
 
@@ -73,9 +77,9 @@ disponibles.
 
 Si le temps le permet, demander à la personne de :
 
-6. « Vous voulez savoir si une réservation est réelle. Trouvez la réponse dans
+7. « Vous voulez savoir si une réservation est réelle. Trouvez la réponse dans
    l’application. »
-7. « Vous avez repéré un problème dans la maquette. Montrez comment vous le
+8. « Vous avez repéré un problème dans la maquette. Montrez comment vous le
    signaleriez. »
 
 Vérifier qu’elle trouve la FAQ et le centre de sécurité, et qu’elle comprend

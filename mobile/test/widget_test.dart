@@ -37,6 +37,8 @@ void main() {
           )
           .first,
     );
+    await tester.ensureVisible(find.text('Simuler la réservation'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Simuler la réservation'));
     await tester.pumpAndSettle();
     expect(store.bookings.single.seats, 1);
@@ -45,9 +47,9 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byIcon(Icons.route_outlined));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Annuler la simulation'));
+    await tester.tap(find.text('Annuler ma demande'));
     await tester.pumpAndSettle();
-    expect(store.bookings, isEmpty);
+    expect(store.bookings.single.status, BookingStatus.cancelled);
     expect(store.availableSeats(store.journeys.first), 3);
   });
 
@@ -79,7 +81,34 @@ void main() {
     await tester.tap(find.text('Publier dans la démonstration'));
     await tester.pumpAndSettle();
     expect(store.journeys.where((journey) => journey.own), hasLength(1));
-    expect(find.text('Trajets publiés'), findsOneWidget);
+    expect(find.text('Mes trajets comme conducteur'), findsOneWidget);
+  });
+
+  testWidgets('le conducteur peut accepter une demande en attente', (
+    tester,
+  ) async {
+    final store = JourneyStore.demo(includeDriverRequest: true);
+    await tester.pumpWidget(FasoCovoitApp(store: store));
+    await tester.tap(find.byIcon(Icons.route_outlined));
+    await tester.pumpAndSettle();
+    final scrollable = find
+        .descendant(
+          of: find.byType(MyJourneysScreen),
+          matching: find.byType(Scrollable),
+        )
+        .first;
+    await tester.scrollUntilVisible(
+      find.text('Accepter'),
+      200,
+      scrollable: scrollable,
+    );
+    await tester.ensureVisible(find.text('Accepter'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Accepter'));
+    await tester.pumpAndSettle();
+
+    expect(store.bookings.single.status, BookingStatus.accepted);
+    expect(find.text('Confirmée dans la démo'), findsOneWidget);
   });
 
   testWidgets('profil, aide et signalement restent sans envoi réel', (

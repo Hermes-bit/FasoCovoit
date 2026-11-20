@@ -4,7 +4,8 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'journeys.dart';
 import 'screens.dart';
 
-void main() => runApp(FasoCovoitApp(store: JourneyStore.demo()));
+void main() =>
+    runApp(FasoCovoitApp(store: JourneyStore.demo(includeDriverRequest: true)));
 
 class FasoCovoitApp extends StatelessWidget {
   const FasoCovoitApp({super.key, required this.store});

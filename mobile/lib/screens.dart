@@ -133,9 +133,7 @@ class _SearchScreenState extends State<SearchScreen> {
   void _search() {
     if (_departure.text.trim().isEmpty || _destination.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Renseignez le départ et la destination.'),
-        ),
+        SnackBar(content: Text('Renseignez le départ et la destination.')),
       );
       return;
     }
@@ -397,12 +395,14 @@ class _DetailScreenState extends State<DetailScreen> {
 
   void _book() {
     try {
-      widget.store.book(widget.journey, _seats);
+      final booking = widget.store.book(widget.journey, _seats);
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(
-            'Réservation simulée, visible dans Mes trajets. Aucun paiement effectué.',
+            booking.status == BookingStatus.accepted
+                ? 'Place confirmée automatiquement dans la démonstration.'
+                : 'Demande envoyée au conducteur dans la démonstration.',
           ),
         ),
       );
@@ -442,8 +442,13 @@ class _DetailScreenState extends State<DetailScreen> {
                         Text(
                           'Départ : ${dateText(journey.when)} à ${timeText(journey.when)}',
                         ),
+                        if (journey.meetingPoint != null &&
+                            journey.meetingPoint!.isNotEmpty)
+                          Text('Rendez-vous : ${journey.meetingPoint}'),
                         if (journey.stop != null && journey.stop!.isNotEmpty)
                           Text('Arrêt : ${journey.stop}'),
+                        if (journey.notes != null && journey.notes!.isNotEmpty)
+                          Text('Note : ${journey.notes}'),
                         const SizedBox(height: 12),
                         Text('Conducteur fictif : ${journey.driver}'),
                         Text(journey.vehicle),
@@ -486,6 +491,15 @@ class _DetailScreenState extends State<DetailScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
+                  const Card(
+                    child: Padding(
+                      padding: EdgeInsets.all(14),
+                      child: Text(
+                        'Annulation et remboursement : règles à définir. Aucun paiement ne sera prélevé ou remboursé dans cette démonstration.',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   FilledButton(
                     onPressed: _book,
                     child: const Text('Simuler la réservation'),
@@ -527,6 +541,8 @@ class _PublishScreenState extends State<PublishScreen> {
   final _from = TextEditingController(text: 'Ouagadougou');
   final _to = TextEditingController(text: 'Bobo-Dioulasso');
   final _stop = TextEditingController();
+  final _meetingPoint = TextEditingController();
+  final _notes = TextEditingController();
   final _price = TextEditingController();
   late DateTime _date;
   TimeOfDay _time = const TimeOfDay(hour: 7, minute: 0);
@@ -545,6 +561,8 @@ class _PublishScreenState extends State<PublishScreen> {
     _from.dispose();
     _to.dispose();
     _stop.dispose();
+    _meetingPoint.dispose();
+    _notes.dispose();
     _price.dispose();
     super.dispose();
   }
@@ -573,6 +591,8 @@ class _PublishScreenState extends State<PublishScreen> {
         departure: _from.text,
         destination: _to.text,
         stop: _stop.text,
+        meetingPoint: _meetingPoint.text,
+        notes: _notes.text,
         when: DateTime(
           _date.year,
           _date.month,
@@ -635,6 +655,22 @@ class _PublishScreenState extends State<PublishScreen> {
           controller: _stop,
           decoration: const InputDecoration(
             labelText: 'Arrêt en route (facultatif)',
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextFormField(
+          controller: _meetingPoint,
+          decoration: const InputDecoration(
+            labelText: 'Point de rendez-vous (facultatif)',
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextFormField(
+          controller: _notes,
+          maxLength: 300,
+          maxLines: 2,
+          decoration: const InputDecoration(
+            labelText: 'Note pour les passagers (facultatif)',
           ),
         ),
         const SizedBox(height: 12),
@@ -718,10 +754,35 @@ class MyJourneysScreen extends StatefulWidget {
 }
 
 class _MyJourneysScreenState extends State<MyJourneysScreen> {
+  String _bookingStatusLabel(BookingStatus status) => switch (status) {
+    BookingStatus.pending => 'En attente du conducteur',
+    BookingStatus.accepted => 'Confirmée dans la démo',
+    BookingStatus.rejected => 'Refusée dans la démo',
+    BookingStatus.cancelled => 'Annulée dans la démo',
+  };
+
+  void _updateRequest(Booking booking, {required bool accept}) {
+    try {
+      if (accept) {
+        widget.store.acceptBooking(booking);
+      } else {
+        widget.store.rejectBooking(booking);
+      }
+      setState(() {});
+      widget.onChanged();
+    } on StateError catch (error) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final own = widget.store.journeys.where((journey) => journey.own).toList();
-    final bookings = widget.store.bookings;
+    final bookings = widget.store.bookings
+        .where((booking) => !widget.store.journeyById(booking.journeyId).own)
+        .toList();
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
@@ -738,7 +799,7 @@ class _MyJourneysScreenState extends State<MyJourneysScreen> {
           const Text('Aucun trajet ni réservation simulée pour le moment.'),
         if (bookings.isNotEmpty)
           const Text(
-            'Réservations simulées',
+            'Mes demandes de réservation',
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
           ),
         ...bookings.map((booking) {
@@ -756,14 +817,27 @@ class _MyJourneysScreenState extends State<MyJourneysScreen> {
                   Text(
                     '${dateText(journey.when)} · ${booking.seats} place(s) · ${priceText(journey.price * booking.seats)}',
                   ),
-                  TextButton(
-                    onPressed: () {
-                      widget.store.cancel(booking);
-                      setState(() {});
-                      widget.onChanged();
-                    },
-                    child: const Text('Annuler la simulation'),
-                  ),
+                  const SizedBox(height: 8),
+                  Text(_bookingStatusLabel(booking.status)),
+                  if (booking.status == BookingStatus.pending ||
+                      booking.status == BookingStatus.accepted)
+                    TextButton(
+                      onPressed: () {
+                        widget.store.cancel(booking);
+                        setState(() {});
+                        widget.onChanged();
+                      },
+                      child: Text(
+                        booking.status == BookingStatus.pending
+                            ? 'Annuler ma demande'
+                            : 'Annuler ma réservation',
+                      ),
+                    ),
+                  if (booking.status == BookingStatus.accepted)
+                    const Text(
+                      'Règles de remboursement à définir ; aucun paiement réel.',
+                      style: TextStyle(fontSize: 12, color: Colors.black54),
+                    ),
                 ],
               ),
             ),
@@ -772,16 +846,75 @@ class _MyJourneysScreenState extends State<MyJourneysScreen> {
         if (own.isNotEmpty) ...[
           const SizedBox(height: 20),
           const Text(
-            'Trajets publiés',
+            'Mes trajets comme conducteur',
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
           ),
           const SizedBox(height: 8),
-          ...own.map(
-            (journey) => JourneyCard(
-              journey: journey,
-              available: widget.store.availableSeats(journey),
-            ),
-          ),
+          ...own.map((journey) {
+            final requests = widget.store.bookingsForJourney(journey.id);
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                JourneyCard(
+                  journey: journey,
+                  available: widget.store.availableSeats(journey),
+                ),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Passagers et demandes',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        if (requests.isEmpty)
+                          const Padding(
+                            padding: EdgeInsets.only(top: 8),
+                            child: Text('Aucune demande pour ce trajet.'),
+                          ),
+                        ...requests.map(
+                          (booking) => Padding(
+                            padding: const EdgeInsets.only(top: 12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${booking.passenger} · ${booking.seats} place(s)',
+                                ),
+                                Text(_bookingStatusLabel(booking.status)),
+                                if (booking.status == BookingStatus.pending)
+                                  Wrap(
+                                    spacing: 8,
+                                    children: [
+                                      OutlinedButton(
+                                        onPressed: () => _updateRequest(
+                                          booking,
+                                          accept: false,
+                                        ),
+                                        child: const Text('Refuser'),
+                                      ),
+                                      FilledButton(
+                                        onPressed: () => _updateRequest(
+                                          booking,
+                                          accept: true,
+                                        ),
+                                        child: const Text('Accepter'),
+                                      ),
+                                    ],
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            );
+          }),
         ],
       ],
     );
