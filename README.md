@@ -41,7 +41,8 @@ flutter run -d chrome "--dart-define=GOOGLE_MAPS_EMBED_API_KEY=VOTRE_CLE"
 ```
 
 Pour GitHub Pages, ajouter `GOOGLE_MAPS_EMBED_API_KEY` comme secret d’action du
-dépôt. La clé est intégrée au JavaScript public du site : restreindre son
+dépôt; le workflow accepte aussi le nom `GOOGLE_MAPS_API`. La clé est intégrée
+au JavaScript public du site : restreindre son
 référent HTTP à `https://hermes-bit.github.io/*` et l’API autorisée à Maps
 Embed. Un secret GitHub ne rend pas une clé incluse dans le navigateur privée.
 Sans clé, l’application indique explicitement que la carte n’est pas configurée.

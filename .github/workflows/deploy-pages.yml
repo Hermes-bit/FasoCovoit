@@ -40,7 +40,7 @@ jobs:
       - name: Build web app
         working-directory: mobile
         env:
-          GOOGLE_MAPS_EMBED_API_KEY: ${{ secrets.GOOGLE_MAPS_EMBED_API_KEY }}
+          GOOGLE_MAPS_EMBED_API_KEY: ${{ secrets.GOOGLE_MAPS_EMBED_API_KEY || secrets.GOOGLE_MAPS_API }}
         run: >-
           flutter build web --base-href /FasoCovoit/
           "--dart-define=GOOGLE_MAPS_EMBED_API_KEY=$GOOGLE_MAPS_EMBED_API_KEY"
