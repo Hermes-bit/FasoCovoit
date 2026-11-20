@@ -64,7 +64,10 @@ Cette méthode sert au développement et ne rend pas le site accessible sur Inte
 
 Cette base permet de rechercher par villes, date et nombre de places, de consulter
 les détails, de publier un trajet fictif, de simuler une réservation et de
-l'annuler. Les disponibilités sont mises à jour **dans la session locale**.
+l'annuler. Elle inclut aussi un profil de démonstration, un parcours
+« Comment ça marche ? », une FAQ, un centre de sécurité et un formulaire de
+signalement qui confirme explicitement qu'il n'envoie rien. Les disponibilités
+sont mises à jour **dans la session locale**.
 Les données ne persistent pas au redémarrage et ne sont pas partagées entre
 utilisateurs. L'application Flutter et la maquette web ne partagent pas leurs données.
 
@@ -73,6 +76,8 @@ utilisateurs. L'application Flutter et la maquette web ne partagent pas leurs do
 Ces démonstrations ne fournissent ni vrais comptes, ni réservation, ni paiement,
 ni vérification d'identité, ni carte, ni géolocalisation, ni appel, ni messagerie,
 ni dispositif SOS. Elles ne doivent pas être utilisées pour organiser de vrais trajets.
+Le centre d'aide et le formulaire de signalement sont des écrans d'exemple,
+non surveillés : aucune demande n'est transmise à une équipe.
 Les prix et profils affichés sont fictifs et aucune règle réelle de plafonnement
 ou de remboursement n'est appliquée.
 

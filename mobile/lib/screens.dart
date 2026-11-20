@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'journeys.dart';
+import 'profile_screens.dart';
 
 String dateText(DateTime date) =>
     '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
@@ -47,6 +48,7 @@ class _MainScreenState extends State<MainScreen> {
           setState(() => _index = 1);
         },
       ),
+      ProfileScreen(onPublish: () => setState(() => _index = 2)),
     ];
     return Scaffold(
       appBar: AppBar(
@@ -74,6 +76,10 @@ class _MainScreenState extends State<MainScreen> {
           NavigationDestination(
             icon: Icon(Icons.add_circle_outline),
             label: 'Publier',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.person_outline),
+            label: 'Profil',
           ),
         ],
       ),

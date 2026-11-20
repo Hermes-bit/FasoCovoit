@@ -69,6 +69,19 @@ Ne pas suggérer les réponses et ne pas promettre que les fonctionnalités de
 sécurité, de vérification ou de paiement montrées dans les maquettes sont déjà
 disponibles.
 
+### Parcours profil et aide
+
+Si le temps le permet, demander à la personne de :
+
+6. « Vous voulez savoir si une réservation est réelle. Trouvez la réponse dans
+   l’application. »
+7. « Vous avez repéré un problème dans la maquette. Montrez comment vous le
+   signaleriez. »
+
+Vérifier qu’elle trouve la FAQ et le centre de sécurité, et qu’elle comprend
+qu’un signalement n’est pas envoyé et n’est pas surveillé. Ces écrans sont des
+exemples d’interface, pas un vrai service d’aide ou d’urgence.
+
 ## Fiche de notes anonyme
 
 Copier cette grille hors du dépôt, sur une feuille ou dans un fichier local :
