@@ -13,7 +13,7 @@ void main() {
     await tester.pumpWidget(FasoCovoitApp(store: store));
     expect(find.textContaining('DÉMONSTRATION LOCALE'), findsOneWidget);
     await tester.scrollUntilVisible(
-      find.text('Trouver un trajet'),
+      find.text('Rechercher les trajets'),
       200,
       scrollable: find
           .descendant(
@@ -22,7 +22,7 @@ void main() {
           )
           .first,
     );
-    await tester.tap(find.text('Trouver un trajet'));
+    await tester.tap(find.text('Rechercher les trajets'));
     await tester.pumpAndSettle();
     expect(find.text('Trajets disponibles'), findsOneWidget);
     await tester.tap(find.textContaining('Ibrahim O.').first);
@@ -143,5 +143,52 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Préparez le voyage'), findsOneWidget);
     expect(find.text('Terminer'), findsOneWidget);
+  });
+
+  testWidgets('profil propose un accès passager et conducteur', (tester) async {
+    await tester.pumpWidget(FasoCovoitApp(store: JourneyStore.demo()));
+    await tester.tap(find.byIcon(Icons.person_outline));
+    await tester.pumpAndSettle();
+    final scrollable = find
+        .descendant(
+          of: find.byType(ProfileScreen),
+          matching: find.byType(Scrollable),
+        )
+        .first;
+    await tester.scrollUntilVisible(
+      find.text('Prendre un trajet'),
+      200,
+      scrollable: scrollable,
+    );
+    await tester.tap(find.text('Prendre un trajet'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Rechercher les trajets'),
+      200,
+      scrollable: find
+          .descendant(
+            of: find.byType(SearchScreen),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    expect(find.text('Rechercher les trajets'), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.person_outline));
+    await tester.pumpAndSettle();
+    final profileScrollable = find
+        .descendant(
+          of: find.byType(ProfileScreen),
+          matching: find.byType(Scrollable),
+        )
+        .first;
+    await tester.scrollUntilVisible(
+      find.text('Proposer un trajet'),
+      200,
+      scrollable: profileScrollable,
+    );
+    await tester.tap(find.text('Proposer un trajet'));
+    await tester.pumpAndSettle();
+    expect(find.text('Publier un trajet'), findsOneWidget);
   });
 }

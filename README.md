@@ -62,9 +62,12 @@ L'adresse IP locale du PC se trouve avec `ipconfig`. Il faut laisser la commande
 en cours ; le pare-feu Windows peut demander l'autorisation pour le réseau privé.
 Cette méthode sert au développement et ne rend pas le site accessible sur Internet.
 
-Cette base permet de rechercher par villes, date et nombre de places, de consulter
-les détails, de publier un trajet fictif, de simuler une réservation et de
-l'annuler. Elle inclut aussi un profil de démonstration, un parcours
+Le parcours passager est accessible dans l’onglet « Voyager » ou depuis
+« Prendre un trajet » dans le profil ; il permet de rechercher par villes, date
+et nombre de places, de consulter les détails, puis de simuler une réservation
+et son annulation. Le conducteur peut ouvrir « Publier » ou « Proposer un
+trajet » depuis le profil. L’application inclut aussi un profil de démonstration,
+un parcours
 « Comment ça marche ? », une FAQ, un centre de sécurité et un formulaire de
 signalement qui confirme explicitement qu'il n'envoie rien. Les disponibilités
 sont mises à jour **dans la session locale**.

@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 
 class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key, required this.onPublish});
+  const ProfileScreen({
+    super.key,
+    required this.onFindTrip,
+    required this.onPublish,
+  });
 
+  final VoidCallback onFindTrip;
   final VoidCallback onPublish;
 
   void _open(BuildContext context, Widget screen) {
@@ -74,6 +79,13 @@ class ProfileScreen extends StatelessWidget {
         title: 'Centre de sécurité',
         subtitle: 'Conseils et limites de la démonstration',
         onTap: () => _open(context, const SafetyCenterScreen()),
+      ),
+      const _SectionTitle('VOYAGEUR'),
+      _ProfileAction(
+        icon: Icons.search,
+        title: 'Prendre un trajet',
+        subtitle: 'Choisir un départ, une destination et une date',
+        onTap: onFindTrip,
       ),
       const _SectionTitle('ESPACE CONDUCTEUR'),
       _ProfileAction(

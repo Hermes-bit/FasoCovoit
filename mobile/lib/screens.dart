@@ -48,7 +48,10 @@ class _MainScreenState extends State<MainScreen> {
           setState(() => _index = 1);
         },
       ),
-      ProfileScreen(onPublish: () => setState(() => _index = 2)),
+      ProfileScreen(
+        onFindTrip: () => setState(() => _index = 0),
+        onPublish: () => setState(() => _index = 2),
+      ),
     ];
     return Scaffold(
       appBar: AppBar(
@@ -68,7 +71,7 @@ class _MainScreenState extends State<MainScreen> {
         selectedIndex: _index,
         onDestinationSelected: (index) => setState(() => _index = index),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.search), label: 'Rechercher'),
+          NavigationDestination(icon: Icon(Icons.search), label: 'Voyager'),
           NavigationDestination(
             icon: Icon(Icons.route_outlined),
             label: 'Mes trajets',
@@ -158,16 +161,18 @@ class _SearchScreenState extends State<SearchScreen> {
       const Text('Bonjour !', style: TextStyle(fontSize: 16)),
       const SizedBox(height: 4),
       Text(
-        'Où allez-vous ?',
+        'Prendre un trajet',
         style: Theme.of(
           context,
         ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
       ),
       const SizedBox(height: 8),
-      const Text('Partageons la route entre nos villes.'),
+      const Text(
+        'Indiquez votre départ et votre destination pour trouver une place.',
+      ),
       const SizedBox(height: 24),
       const Text(
-        'Entre villes',
+        'Recherche entre villes',
         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
       ),
       const SizedBox(height: 16),
@@ -209,7 +214,7 @@ class _SearchScreenState extends State<SearchScreen> {
       FilledButton.icon(
         onPressed: _search,
         icon: const Icon(Icons.search),
-        label: const Text('Trouver un trajet'),
+        label: const Text('Rechercher les trajets'),
       ),
       const SizedBox(height: 24),
       const Card(
