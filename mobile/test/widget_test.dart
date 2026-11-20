@@ -4,13 +4,46 @@ import 'package:fasocovoit/profile_screens.dart';
 import 'package:fasocovoit/screens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:latlong2/latlong.dart';
+
+import 'package:fasocovoit/route_preview.dart';
+
+Future<RouteLine> _fakeRoute(
+  String departure,
+  String destination,
+  String? stop,
+) async {
+  final waypoints = [
+    RouteWaypoint(name: departure, location: const LatLng(12, -2)),
+    if (stop != null && stop.isNotEmpty)
+      RouteWaypoint(name: stop, location: const LatLng(11.7, -3)),
+    RouteWaypoint(name: destination, location: const LatLng(11, -4)),
+  ];
+  return RouteLine(
+    points: waypoints.map((waypoint) => waypoint.location).toList(),
+    waypoints: waypoints,
+    distanceMeters: 355000,
+    durationSeconds: 15000,
+  );
+}
+
+Future<RouteLine> _failedRoute(
+  String departure,
+  String destination,
+  String? stop,
+) async {
+  throw const RoutePreviewException('Itinéraire indisponible pour le test.');
+}
+
+FasoCovoitApp _demoApp(JourneyStore store) =>
+    FasoCovoitApp(store: store, routeLoader: _fakeRoute);
 
 void main() {
   testWidgets('recherche et réservation restent des simulations', (
     tester,
   ) async {
     final store = JourneyStore.demo();
-    await tester.pumpWidget(FasoCovoitApp(store: store));
+    await tester.pumpWidget(_demoApp(store));
     expect(find.textContaining('DÉMONSTRATION LOCALE'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('Rechercher les trajets'),
@@ -27,18 +60,8 @@ void main() {
     expect(find.text('Trajets disponibles'), findsOneWidget);
     await tester.tap(find.textContaining('Ibrahim O.').first);
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(
-      find.text('Simuler la réservation'),
-      200,
-      scrollable: find
-          .descendant(
-            of: find.byType(DetailScreen),
-            matching: find.byType(Scrollable),
-          )
-          .first,
-    );
-    await tester.ensureVisible(find.text('Simuler la réservation'));
-    await tester.pumpAndSettle();
+    expect(find.text('Aperçu de l’itinéraire'), findsOneWidget);
+    expect(find.textContaining('355 km'), findsOneWidget);
     await tester.tap(find.text('Simuler la réservation'));
     await tester.pumpAndSettle();
     expect(store.bookings.single.seats, 1);
@@ -53,9 +76,29 @@ void main() {
     expect(store.availableSeats(store.journeys.first), 3);
   });
 
+  testWidgets('la réservation est bloquée si le calcul de route échoue', (
+    tester,
+  ) async {
+    final store = JourneyStore.demo();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DetailScreen(
+          store: store,
+          journey: store.journeys.first,
+          initialSeats: 1,
+          routeLoader: _failedRoute,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Itinéraire indisponible'), findsOneWidget);
+    expect(find.text('Simuler la réservation'), findsNothing);
+  });
+
   testWidgets('publication locale visible dans mes trajets', (tester) async {
     final store = JourneyStore.demo();
-    await tester.pumpWidget(FasoCovoitApp(store: store));
+    await tester.pumpWidget(_demoApp(store));
     await tester.tap(find.text('Publier'));
     await tester.pumpAndSettle();
     final scrollable = find
@@ -88,7 +131,7 @@ void main() {
     tester,
   ) async {
     final store = JourneyStore.demo(includeDriverRequest: true);
-    await tester.pumpWidget(FasoCovoitApp(store: store));
+    await tester.pumpWidget(_demoApp(store));
     await tester.tap(find.byIcon(Icons.route_outlined));
     await tester.pumpAndSettle();
     final scrollable = find
@@ -114,7 +157,7 @@ void main() {
   testWidgets('profil, aide et signalement restent sans envoi réel', (
     tester,
   ) async {
-    await tester.pumpWidget(FasoCovoitApp(store: JourneyStore.demo()));
+    await tester.pumpWidget(_demoApp(JourneyStore.demo()));
     await tester.tap(find.byIcon(Icons.person_outline));
     await tester.pumpAndSettle();
     expect(find.text('Profil de démonstration'), findsOneWidget);
@@ -159,7 +202,7 @@ void main() {
   });
 
   testWidgets('guide d’accueil présente ses trois étapes', (tester) async {
-    await tester.pumpWidget(FasoCovoitApp(store: JourneyStore.demo()));
+    await tester.pumpWidget(_demoApp(JourneyStore.demo()));
     await tester.tap(find.byIcon(Icons.person_outline));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Comment ça marche ?'));
@@ -175,7 +218,7 @@ void main() {
   });
 
   testWidgets('profil propose un accès passager et conducteur', (tester) async {
-    await tester.pumpWidget(FasoCovoitApp(store: JourneyStore.demo()));
+    await tester.pumpWidget(_demoApp(JourneyStore.demo()));
     await tester.tap(find.byIcon(Icons.person_outline));
     await tester.pumpAndSettle();
     final scrollable = find

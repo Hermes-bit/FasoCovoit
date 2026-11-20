@@ -70,9 +70,12 @@ peut publier un trajet avec point de rendez-vous, notes, équipements et choix
 entre demande manuelle ou acceptation automatique. « Mes trajets » affiche les
 demandes et leur statut ; l'exemple conducteur préchargé permet d'essayer
 l'acceptation ou le refus d'une demande. Tous ces états sont uniquement locaux
-et fictifs. L’application inclut aussi un profil de démonstration,
-un parcours
-« Comment ça marche ? », une FAQ, un centre de sécurité et un formulaire de
+et fictifs. Avant la réservation, le détail affiche une carte avec l’itinéraire
+routier tracé, les villes étapes, la distance et la durée estimées. Cette
+prévisualisation utilise OpenStreetMap et le service de démonstration OSRM ; une
+connexion Internet est nécessaire. L’application inclut aussi un profil de
+démonstration, un parcours « Comment ça marche ? », une FAQ, un centre de
+sécurité et un formulaire de
 signalement qui confirme explicitement qu'il n'envoie rien. Les disponibilités
 sont mises à jour **dans la session locale**.
 Les données ne persistent pas au redémarrage et ne sont pas partagées entre
@@ -80,13 +83,20 @@ utilisateurs. L'application Flutter et la maquette web ne partagent pas leurs do
 
 ## Limites importantes
 
-Ces démonstrations ne fournissent ni vrais comptes, ni réservation, ni paiement,
-ni vérification d'identité, ni carte, ni géolocalisation, ni appel, ni messagerie,
-ni dispositif SOS. Elles ne doivent pas être utilisées pour organiser de vrais trajets.
+Ces démonstrations ne fournissent ni comptes ou réservations réels, ni paiement,
+ni vérification d'identité, ni géolocalisation en temps réel, ni appel, ni
+messagerie, ni dispositif SOS. Elles ne doivent pas être utilisées pour organiser de vrais trajets.
 Le centre d'aide et le formulaire de signalement sont des écrans d'exemple,
 non surveillés : aucune demande n'est transmise à une équipe.
 Les prix et profils affichés sont fictifs et aucune règle réelle de plafonnement
 ou de remboursement n'est appliquée.
+La carte place les villes configurées dans l’application sur des coordonnées
+de référence (Ouagadougou, Bobo-Dioulasso, Boromo, Koudougou, Kaya, Ouahigouya,
+Banfora, Dédougou, Fada N’Gourma, Tenkodogo, Koupéla, Dori, Ziniaré et Houndé)
+et ne géocode pas les adresses ni les points de rendez-vous exacts.
+La disponibilité d’OSRM et d’OpenStreetMap n’est pas garantie pour un service
+réel ; la réservation de démonstration est désactivée si le calcul de
+l’itinéraire échoue.
 
 ## Prochaines étapes avant un pilote réel
 
@@ -104,5 +114,8 @@ ou de remboursement n'est appliquée.
    données auprès des autorités et conseils compétents.
 5. Négocier et intégrer les paiements mobiles et les règles de gestion des fonds,
    puis réaliser les fonctions de sécurité et tester les situations d'incident.
-6. Tester sur de vrais appareils et réseaux, faire une recette de sécurité et
-   un pilote fermé ; développer ensuite la course partagée en ville et le suivi.
+6. Choisir un fournisseur cartographique et de calcul d’itinéraires adapté à
+   la production, vérifier les points de prise en charge et les limites de
+   service, puis tester sur de vrais appareils et réseaux. Faire une recette de
+   sécurité et un pilote fermé ; développer ensuite la course partagée en ville
+   et le suivi.

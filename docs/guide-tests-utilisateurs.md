@@ -41,9 +41,13 @@ personnelle. Ne pas expliquer comment fonctionne le service pendant l'exercice.
 1. « Vous souhaitez aller de Ouagadougou à Bobo-Dioulasso demain pour deux
    personnes. Cherchez un trajet. »
 2. « Choisissez un trajet et trouvez l'heure et le lieu de départ, le conducteur,
-   les places disponibles et le prix par personne. »
+   les places disponibles et le prix par personne. Regardez la carte : quel
+   itinéraire, quelles étapes et quelle durée sont indiqués ? »
 3. « Simulez la réservation de deux places. Où retrouvez-vous votre réservation ?
    Est-elle confirmée ou en attente du conducteur ? Comment l'annuleriez-vous ? »
+
+Si la carte ne se charge pas, demander à la personne ce qu’elle comprend du
+message et vérifier qu’elle remarque que la réservation reste désactivée.
 
 ### Parcours conducteur
 

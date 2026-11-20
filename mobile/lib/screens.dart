@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'journeys.dart';
 import 'profile_screens.dart';
+import 'route_preview.dart';
 
 String dateText(DateTime date) =>
     '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
@@ -27,8 +28,9 @@ class DemoNotice extends StatelessWidget {
 }
 
 class MainScreen extends StatefulWidget {
-  const MainScreen({super.key, required this.store});
+  const MainScreen({super.key, required this.store, this.routeLoader});
   final JourneyStore store;
+  final RouteLoader? routeLoader;
   @override
   State<MainScreen> createState() => _MainScreenState();
 }
@@ -40,7 +42,11 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     final pages = [
-      SearchScreen(store: widget.store, onChanged: _refresh),
+      SearchScreen(
+        store: widget.store,
+        onChanged: _refresh,
+        routeLoader: widget.routeLoader,
+      ),
       MyJourneysScreen(store: widget.store, onChanged: _refresh),
       PublishScreen(
         store: widget.store,
@@ -91,9 +97,15 @@ class _MainScreenState extends State<MainScreen> {
 }
 
 class SearchScreen extends StatefulWidget {
-  const SearchScreen({super.key, required this.store, required this.onChanged});
+  const SearchScreen({
+    super.key,
+    required this.store,
+    required this.onChanged,
+    this.routeLoader,
+  });
   final JourneyStore store;
   final VoidCallback onChanged;
+  final RouteLoader? routeLoader;
   @override
   State<SearchScreen> createState() => _SearchScreenState();
 }
@@ -147,6 +159,7 @@ class _SearchScreenState extends State<SearchScreen> {
           date: _date,
           passengers: _passengers,
           onChanged: widget.onChanged,
+          routeLoader: widget.routeLoader,
         ),
       ),
     );
@@ -241,6 +254,7 @@ class ResultsScreen extends StatefulWidget {
     required this.date,
     required this.passengers,
     required this.onChanged,
+    this.routeLoader,
   });
   final JourneyStore store;
   final String departure;
@@ -248,6 +262,7 @@ class ResultsScreen extends StatefulWidget {
   final DateTime date;
   final int passengers;
   final VoidCallback onChanged;
+  final RouteLoader? routeLoader;
   @override
   State<ResultsScreen> createState() => _ResultsScreenState();
 }
@@ -296,6 +311,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
                             store: widget.store,
                             journey: journey,
                             initialSeats: widget.passengers,
+                            routeLoader: widget.routeLoader,
                           ),
                         ),
                       );
@@ -377,20 +393,43 @@ class DetailScreen extends StatefulWidget {
     required this.store,
     required this.journey,
     required this.initialSeats,
+    this.routeLoader,
   });
   final JourneyStore store;
   final Journey journey;
   final int initialSeats;
+  final RouteLoader? routeLoader;
   @override
   State<DetailScreen> createState() => _DetailScreenState();
 }
 
 class _DetailScreenState extends State<DetailScreen> {
   late int _seats;
+  late Future<RouteLine> _routeFuture;
+
   @override
   void initState() {
     super.initState();
     _seats = widget.initialSeats;
+    _routeFuture = _loadRoute();
+  }
+
+  @override
+  void didUpdateWidget(covariant DetailScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.journey.id != widget.journey.id) {
+      _routeFuture = _loadRoute();
+    }
+  }
+
+  Future<RouteLine> _loadRoute() => (widget.routeLoader ?? fetchRoadRoute)(
+    widget.journey.departure,
+    widget.journey.destination,
+    widget.journey.stop,
+  );
+
+  void _retryRoute() {
+    setState(() => _routeFuture = _loadRoute());
   }
 
   void _book() {
@@ -423,103 +462,180 @@ class _DetailScreenState extends State<DetailScreen> {
         children: [
           const DemoNotice(),
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.all(20),
-              children: [
-                Text(
-                  '${journey.departure} → ${journey.destination}',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(18),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Départ : ${dateText(journey.when)} à ${timeText(journey.when)}',
-                        ),
-                        if (journey.meetingPoint != null &&
-                            journey.meetingPoint!.isNotEmpty)
-                          Text('Rendez-vous : ${journey.meetingPoint}'),
-                        if (journey.stop != null && journey.stop!.isNotEmpty)
-                          Text('Arrêt : ${journey.stop}'),
-                        if (journey.notes != null && journey.notes!.isNotEmpty)
-                          Text('Note : ${journey.notes}'),
-                        const SizedBox(height: 12),
-                        Text('Conducteur fictif : ${journey.driver}'),
-                        Text(journey.vehicle),
-                        if (journey.luggage) const Text('Bagages acceptés'),
-                        if (journey.airConditioning)
-                          const Text('Climatisation'),
-                        if (journey.automatic)
-                          const Text('Réservation automatique (exemple)'),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                if (!journey.own && available > 0) ...[
-                  Row(
-                    children: [
-                      const Expanded(child: Text('Nombre de places')),
-                      IconButton(
-                        onPressed: _seats > 1
-                            ? () => setState(() => _seats--)
-                            : null,
-                        icon: const Icon(Icons.remove_circle_outline),
-                        tooltip: 'Retirer une place',
-                      ),
-                      Text('$_seats'),
-                      IconButton(
-                        onPressed: _seats < available
-                            ? () => setState(() => _seats++)
-                            : null,
-                        icon: const Icon(Icons.add_circle_outline),
-                        tooltip: 'Ajouter une place',
-                      ),
-                    ],
-                  ),
+            child: FutureBuilder<RouteLine>(
+              future: _routeFuture,
+              builder: (context, routeSnapshot) => ListView(
+                padding: const EdgeInsets.all(20),
+                children: [
                   Text(
-                    'Total fictif : ${priceText(journey.price * _seats)}',
-                    style: const TextStyle(
+                    '${journey.departure} → ${journey.destination}',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.bold,
-                      fontSize: 18,
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Card(
+                  const Text(
+                    'Aperçu de l’itinéraire',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                  ),
+                  const SizedBox(height: 10),
+                  if (routeSnapshot.connectionState == ConnectionState.waiting)
+                    const Card(
+                      child: Padding(
+                        padding: EdgeInsets.all(24),
+                        child: Center(
+                          child: Column(
+                            children: [
+                              CircularProgressIndicator(),
+                              SizedBox(height: 12),
+                              Text('Calcul de l’itinéraire routier…'),
+                            ],
+                          ),
+                        ),
+                      ),
+                    )
+                  else if (routeSnapshot.hasError)
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              routeSnapshot.error.toString(),
+                              style: const TextStyle(color: Colors.red),
+                            ),
+                            const SizedBox(height: 8),
+                            OutlinedButton.icon(
+                              onPressed: _retryRoute,
+                              icon: const Icon(Icons.refresh),
+                              label: const Text('Réessayer'),
+                            ),
+                            const Text(
+                              'La réservation restera indisponible tant que l’itinéraire ne peut pas être affiché.',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    RouteMapPreview(route: routeSnapshot.requireData),
+                  const SizedBox(height: 20),
+                  Card(
                     child: Padding(
-                      padding: EdgeInsets.all(14),
-                      child: Text(
-                        'Annulation et remboursement : règles à définir. Aucun paiement ne sera prélevé ou remboursé dans cette démonstration.',
+                      padding: const EdgeInsets.all(18),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Départ : ${dateText(journey.when)} à ${timeText(journey.when)}',
+                          ),
+                          if (journey.meetingPoint != null &&
+                              journey.meetingPoint!.isNotEmpty)
+                            Text('Rendez-vous : ${journey.meetingPoint}'),
+                          if (journey.stop != null && journey.stop!.isNotEmpty)
+                            Text('Arrêt : ${journey.stop}'),
+                          if (journey.notes != null &&
+                              journey.notes!.isNotEmpty)
+                            Text('Note : ${journey.notes}'),
+                          const SizedBox(height: 12),
+                          Text('Conducteur fictif : ${journey.driver}'),
+                          Text(journey.vehicle),
+                          if (journey.luggage) const Text('Bagages acceptés'),
+                          if (journey.airConditioning)
+                            const Text('Climatisation'),
+                          if (journey.automatic)
+                            const Text('Réservation automatique (exemple)'),
+                        ],
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  FilledButton(
-                    onPressed: _book,
-                    child: const Text('Simuler la réservation'),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Aucun paiement ni contact avec un conducteur. Prix et identité fictifs.',
-                    style: TextStyle(color: Colors.black54),
-                  ),
-                ] else
-                  Text(
-                    journey.own
-                        ? 'Vous avez publié cet exemple.'
-                        : 'Plus de place disponible.',
-                  ),
-              ],
+                  const SizedBox(height: 16),
+                  if (!journey.own && available > 0) ...[
+                    Row(
+                      children: [
+                        const Expanded(child: Text('Nombre de places')),
+                        IconButton(
+                          onPressed: _seats > 1
+                              ? () => setState(() => _seats--)
+                              : null,
+                          icon: const Icon(Icons.remove_circle_outline),
+                          tooltip: 'Retirer une place',
+                        ),
+                        Text('$_seats'),
+                        IconButton(
+                          onPressed: _seats < available
+                              ? () => setState(() => _seats++)
+                              : null,
+                          icon: const Icon(Icons.add_circle_outline),
+                          tooltip: 'Ajouter une place',
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    const Card(
+                      child: Padding(
+                        padding: EdgeInsets.all(14),
+                        child: Text(
+                          'Annulation et remboursement : règles à définir. Aucun paiement ne sera prélevé ou remboursé dans cette démonstration.',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Aucun paiement ni contact avec un conducteur. Prix et identité fictifs.',
+                      style: TextStyle(color: Colors.black54),
+                    ),
+                  ] else
+                    Text(
+                      journey.own
+                          ? 'Vous avez publié cet exemple.'
+                          : 'Plus de place disponible.',
+                    ),
+                ],
+              ),
             ),
           ),
         ],
       ),
+      bottomNavigationBar: !journey.own && available > 0
+          ? FutureBuilder<RouteLine>(
+              future: _routeFuture,
+              builder: (context, routeSnapshot) {
+                if (!routeSnapshot.hasData) return const SizedBox.shrink();
+                return Material(
+                  color: Theme.of(context).colorScheme.surface,
+                  elevation: 4,
+                  child: SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Total fictif : ${priceText(journey.price * _seats)}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton(
+                              onPressed: _book,
+                              child: const Text('Simuler la réservation'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            )
+          : null,
     );
   }
 }
