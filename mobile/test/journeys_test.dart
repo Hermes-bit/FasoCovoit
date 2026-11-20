@@ -48,48 +48,8 @@ void main() {
       expect(() => store.book(journey, 1), throwsStateError);
       store.cancel(store.bookings.single);
       expect(store.availableSeats(journey), 3);
-      expect(store.bookings.single.status, BookingStatus.cancelled);
     },
   );
-
-  test('demande manuelle, décision conducteur et places disponibles', () {
-    final demo = JourneyStore.demo(now: now, includeDriverRequest: true);
-    final ownJourney = demo.journeyById('driver-demo');
-    final request = demo.bookings.single;
-    expect(request.status, BookingStatus.pending);
-    expect(demo.availableSeats(ownJourney), 2);
-
-    demo.acceptBooking(request);
-    expect(request.status, BookingStatus.accepted);
-    demo.cancel(request);
-    expect(request.status, BookingStatus.cancelled);
-    expect(demo.availableSeats(ownJourney), 3);
-
-    final secondDemo = JourneyStore.demo(now: now, includeDriverRequest: true);
-    final rejectedRequest = secondDemo.bookings.single;
-    final rejectedJourney = secondDemo.journeyById('driver-demo');
-    secondDemo.rejectBooking(rejectedRequest);
-    expect(rejectedRequest.status, BookingStatus.rejected);
-    expect(secondDemo.availableSeats(rejectedJourney), 3);
-  });
-
-  test('réservation automatique confirme immédiatement dans la démo', () {
-    final journey = Journey(
-      id: 'automatic-demo',
-      departure: 'Ouagadougou',
-      destination: 'Bobo-Dioulasso',
-      when: now.add(const Duration(days: 1)),
-      seats: 3,
-      price: 5000,
-      driver: 'Conducteur démo',
-      vehicle: 'Véhicule démo',
-      automatic: true,
-    );
-    final automaticStore = JourneyStore(journeys: [journey]);
-    final booking = automaticStore.book(journey, 2);
-    expect(booking.status, BookingStatus.accepted);
-    expect(automaticStore.availableSeats(journey), 1);
-  });
 
   test(
     'publication valide les données et interdit de réserver son propre trajet',

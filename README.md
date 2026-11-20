@@ -5,11 +5,6 @@ interurbains, avec Ouagadougou–Bobo-Dioulasso comme ligne pilote envisagée.
 Deux démonstrations indépendantes sont disponibles : la maquette web initiale et
 une première base Flutter. Elles utilisent uniquement des données fictives.
 
-Pour préparer les premiers retours, utiliser le
-[guide des tests utilisateurs](docs/guide-tests-utilisateurs.md). Il distingue
-le test d'ergonomie de la maquette de l'étude de marché plus large avant le
-lancement.
-
 ## Essayer la maquette web
 
 Ouvrir `index.html` dans un navigateur. Aucun compte, serveur ou installation n'est nécessaire.
@@ -31,6 +26,28 @@ flutter pub get
 flutter run -d chrome
 ```
 
+Le parcours Flutter comprend la recherche, les réservations simulées et un
+profil passager. Le profil conducteur sera construit dans une étape suivante.
+La publication n’est donc pas proposée dans l’espace passager.
+
+### Carte Google Maps sur le Web
+
+L’aperçu d’itinéraire utilise l’API officielle Maps Embed, sans frais d’usage
+selon Google, et nécessite une clé API. La clé n’est pas incluse dans le dépôt.
+Pour l’essai local, créer une clé restreinte à l’API Maps Embed puis lancer :
+
+```powershell
+flutter run -d chrome "--dart-define=GOOGLE_MAPS_EMBED_API_KEY=VOTRE_CLE"
+```
+
+Pour GitHub Pages, ajouter `GOOGLE_MAPS_EMBED_API_KEY` comme secret d’action du
+dépôt. La clé est intégrée au JavaScript public du site : restreindre son
+référent HTTP à `https://hermes-bit.github.io/*` et l’API autorisée à Maps
+Embed. Un secret GitHub ne rend pas une clé incluse dans le navigateur privée.
+Sans clé, l’application indique explicitement que la carte n’est pas configurée.
+Maps Embed est réservé au Web; l’application Flutter native n’affiche pas cette
+carte intégrée.
+
 Pour Android, connecter un appareil ou démarrer un émulateur, accepter les
 licences du SDK Android, puis utiliser `flutter run`. iOS nécessite macOS et
 Xcode. Tests et analyse : `flutter test` et `flutter analyze` depuis `mobile`.
@@ -46,8 +63,6 @@ Le premier déploiement peut prendre quelques minutes. Suivre son état dans
 l'onglet **Actions** du dépôt. Si Pages n'est pas encore activé pour ce dépôt,
 choisir **Settings → Pages → Build and deployment → GitHub Actions**.
 Le site public est une démonstration ; le code du dépôt est également public.
-Le workflow utilise Flutter 3.44.6 afin d'aligner la compilation sur la version
-validée localement.
 
 ### Accès direct par Flutter sur le même Wi-Fi
 
@@ -62,48 +77,26 @@ L'adresse IP locale du PC se trouve avec `ipconfig`. Il faut laisser la commande
 en cours ; le pare-feu Windows peut demander l'autorisation pour le réseau privé.
 Cette méthode sert au développement et ne rend pas le site accessible sur Internet.
 
-Le parcours passager est accessible dans l’onglet « Voyager » ou depuis
-« Prendre un trajet » dans le profil ; il permet de rechercher par villes, date
-et nombre de places, de consulter les détails, puis de simuler une réservation
-ou une demande en attente du conducteur, puis son annulation. Le conducteur
-peut publier un trajet avec point de rendez-vous, notes, équipements et choix
-entre demande manuelle ou acceptation automatique. « Mes trajets » affiche les
-demandes et leur statut ; l'exemple conducteur préchargé permet d'essayer
-l'acceptation ou le refus d'une demande. Tous ces états sont uniquement locaux
-et fictifs. Avant la réservation, le détail affiche une carte avec l’itinéraire
-routier tracé, les villes étapes, la distance et la durée estimées. Cette
-prévisualisation utilise OpenStreetMap et le service de démonstration OSRM ; une
-connexion Internet est nécessaire. L’application inclut aussi un profil de
-démonstration, un parcours « Comment ça marche ? », une FAQ, un centre de
-sécurité et un formulaire de
-signalement qui confirme explicitement qu'il n'envoie rien. Les disponibilités
-sont mises à jour **dans la session locale**.
+Cette base permet de rechercher par villes, date et nombre de places, de consulter
+les détails, de publier un trajet fictif, de simuler une réservation et de
+l'annuler. Les disponibilités sont mises à jour **dans la session locale**.
 Les données ne persistent pas au redémarrage et ne sont pas partagées entre
 utilisateurs. L'application Flutter et la maquette web ne partagent pas leurs données.
 
 ## Limites importantes
 
-Ces démonstrations ne fournissent ni comptes ou réservations réels, ni paiement,
-ni vérification d'identité, ni géolocalisation en temps réel, ni appel, ni
-messagerie, ni dispositif SOS. Elles ne doivent pas être utilisées pour organiser de vrais trajets.
-Le centre d'aide et le formulaire de signalement sont des écrans d'exemple,
-non surveillés : aucune demande n'est transmise à une équipe.
-Les prix et profils affichés sont fictifs et aucune règle réelle de plafonnement
-ou de remboursement n'est appliquée.
-La carte place les villes configurées dans l’application sur des coordonnées
-de référence (Ouagadougou, Bobo-Dioulasso, Boromo, Koudougou, Kaya, Ouahigouya,
-Banfora, Dédougou, Fada N’Gourma, Tenkodogo, Koupéla, Dori, Ziniaré et Houndé)
-et ne géocode pas les adresses ni les points de rendez-vous exacts.
-La disponibilité d’OSRM et d’OpenStreetMap n’est pas garantie pour un service
-réel ; la réservation de démonstration est désactivée si le calcul de
-l’itinéraire échoue.
+Ces démonstrations ne fournissent ni vrais comptes, ni réservation réelle, ni
+paiement, ni vérification d'identité, ni géolocalisation, ni appel, ni
+messagerie, ni dispositif SOS. Google Maps Embed n’affiche une carte Web que
+lorsqu’une clé configurée est disponible. Les avis, portefeuilles, réductions
+et profils restent fictifs ou désactivés; aucune règle réelle de plafonnement
+ou de remboursement n'est appliquée. Ne saisissez pas de coordonnées bancaires
+ou d’informations personnelles réelles.
 
 ## Prochaines étapes avant un pilote réel
 
-1. Tester les parcours de démonstration avec des passagers et conducteurs
-   (voir le [guide des tests](docs/guide-tests-utilisateurs.md)), puis valider
-   les règles : prix plafonds, annulations, remboursements et acceptation des
-   demandes. En parallèle, mener l'étude de marché prévue dans la checklist.
+1. Valider le périmètre et les règles avec des passagers et conducteurs : prix
+   plafonds, annulations, remboursements et acceptation des demandes.
 2. Créer les comptes de l'entreprise et un projet Supabase. Concevoir et tester
    la base PostgreSQL, les autorisations, les réservations atomiques et la
    protection des données avant de connecter l'application ; aucun service
@@ -114,8 +107,5 @@ l’itinéraire échoue.
    données auprès des autorités et conseils compétents.
 5. Négocier et intégrer les paiements mobiles et les règles de gestion des fonds,
    puis réaliser les fonctions de sécurité et tester les situations d'incident.
-6. Choisir un fournisseur cartographique et de calcul d’itinéraires adapté à
-   la production, vérifier les points de prise en charge et les limites de
-   service, puis tester sur de vrais appareils et réseaux. Faire une recette de
-   sécurité et un pilote fermé ; développer ensuite la course partagée en ville
-   et le suivi.
+6. Tester sur de vrais appareils et réseaux, faire une recette de sécurité et
+   un pilote fermé ; développer ensuite la course partagée en ville et le suivi.

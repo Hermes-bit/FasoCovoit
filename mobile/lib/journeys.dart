@@ -9,8 +9,6 @@ class Journey {
     required this.driver,
     required this.vehicle,
     this.stop,
-    this.meetingPoint,
-    this.notes,
     this.own = false,
     this.luggage = false,
     this.airConditioning = false,
@@ -26,8 +24,6 @@ class Journey {
   final String driver;
   final String vehicle;
   final String? stop;
-  final String? meetingPoint;
-  final String? notes;
   final bool own;
   final bool luggage;
   final bool airConditioning;
@@ -35,34 +31,19 @@ class Journey {
 }
 
 class Booking {
-  Booking({
-    required this.id,
-    required this.journeyId,
-    required this.seats,
-    required this.passenger,
-    required this.status,
-  });
-
-  final String id;
+  Booking({required this.journeyId, required this.seats});
   final String journeyId;
   final int seats;
-  final String passenger;
-  BookingStatus status;
 }
-
-enum BookingStatus { pending, accepted, rejected, cancelled }
 
 class JourneyStore {
   JourneyStore({required List<Journey> journeys})
     : _journeys = List.of(journeys);
 
-  factory JourneyStore.demo({
-    DateTime? now,
-    bool includeDriverRequest = false,
-  }) {
+  factory JourneyStore.demo({DateTime? now}) {
     final current = now ?? DateTime.now();
     final tomorrow = DateTime(current.year, current.month, current.day + 1, 7);
-    final store = JourneyStore(
+    return JourneyStore(
       journeys: [
         Journey(
           id: 'demo-1',
@@ -74,8 +55,6 @@ class JourneyStore {
           driver: 'Ibrahim O.',
           vehicle: 'Toyota Corolla',
           stop: 'Boromo',
-          meetingPoint: 'Rond-point de Gounghin',
-          notes: 'Départ à l’heure ; pause prévue à Boromo.',
           luggage: true,
         ),
         Journey(
@@ -87,37 +66,10 @@ class JourneyStore {
           price: 5500,
           driver: 'Fatimata K.',
           vehicle: 'Hyundai Tucson',
-          meetingPoint: 'Gare routière de Ouagadougou',
-          notes: 'Merci d’arriver 15 minutes avant le départ.',
           airConditioning: true,
         ),
       ],
     );
-    if (includeDriverRequest) {
-      final ownJourney = Journey(
-        id: 'driver-demo',
-        departure: 'Ouagadougou',
-        destination: 'Koudougou',
-        when: tomorrow.add(const Duration(hours: 2)),
-        seats: 3,
-        price: 2500,
-        driver: 'Vous (démo)',
-        vehicle: 'Véhicule à renseigner',
-        meetingPoint: 'Lieu de rendez-vous à préciser',
-        own: true,
-      );
-      store._journeys.add(ownJourney);
-      store._bookings.add(
-        Booking(
-          id: 'booking-demo',
-          journeyId: ownJourney.id,
-          seats: 1,
-          passenger: 'Passager démo',
-          status: BookingStatus.pending,
-        ),
-      );
-    }
-    return store;
   }
 
   final List<Journey> _journeys;
@@ -130,20 +82,11 @@ class JourneyStore {
   int availableSeats(Journey journey) =>
       journey.seats -
       _bookings
-          .where(
-            (booking) =>
-                booking.journeyId == journey.id &&
-                (booking.status == BookingStatus.pending ||
-                    booking.status == BookingStatus.accepted),
-          )
+          .where((booking) => booking.journeyId == journey.id)
           .fold(0, (total, booking) => total + booking.seats);
 
   Journey journeyById(String id) =>
       _journeys.firstWhere((journey) => journey.id == id);
-
-  List<Booking> bookingsForJourney(String journeyId) => List.unmodifiable(
-    _bookings.where((booking) => booking.journeyId == journeyId),
-  );
 
   static String _normalize(String value) => value
       .trim()
@@ -163,7 +106,6 @@ class JourneyStore {
     return _journeys.where((journey) {
       return _normalize(journey.departure).contains(from) &&
           _normalize(journey.destination).contains(to) &&
-          !journey.own &&
           journey.when.year == date.year &&
           journey.when.month == date.month &&
           journey.when.day == date.day &&
@@ -179,8 +121,6 @@ class JourneyStore {
     required int price,
     required DateTime now,
     String? stop,
-    String? meetingPoint,
-    String? notes,
     bool luggage = false,
     bool airConditioning = false,
     bool automatic = false,
@@ -206,8 +146,6 @@ class JourneyStore {
       driver: 'Vous',
       vehicle: 'Véhicule à renseigner',
       stop: stop?.trim(),
-      meetingPoint: meetingPoint?.trim(),
-      notes: notes?.trim(),
       own: true,
       luggage: luggage,
       airConditioning: airConditioning,
@@ -217,7 +155,7 @@ class JourneyStore {
     return journey;
   }
 
-  Booking book(Journey journey, int seats) {
+  void book(Journey journey, int seats) {
     final stored = _journeys.where((item) => item.id == journey.id);
     if (stored.isEmpty || !identical(stored.first, journey)) {
       throw StateError('Ce trajet n’existe plus.');
@@ -225,59 +163,18 @@ class JourneyStore {
     if (journey.own) {
       throw StateError('Vous ne pouvez pas réserver votre trajet.');
     }
-    if (_bookings.any(
-      (booking) =>
-          booking.journeyId == journey.id &&
-          (booking.status == BookingStatus.pending ||
-              booking.status == BookingStatus.accepted),
-    )) {
+    if (_bookings.any((booking) => booking.journeyId == journey.id)) {
       throw StateError('Vous avez déjà simulé une réservation pour ce trajet.');
     }
     if (seats < 1 || seats > availableSeats(journey)) {
       throw StateError('Nombre de places indisponible.');
     }
-    final booking = Booking(
-      id: 'local-booking-${_nextId++}',
-      journeyId: journey.id,
-      seats: seats,
-      passenger: 'Passager démo',
-      status: journey.automatic
-          ? BookingStatus.accepted
-          : BookingStatus.pending,
-    );
-    _bookings.add(booking);
-    return booking;
-  }
-
-  void acceptBooking(Booking booking) {
-    _validateDriverRequest(booking);
-    if (booking.status != BookingStatus.pending) {
-      throw StateError('Cette demande n’est plus en attente.');
-    }
-    booking.status = BookingStatus.accepted;
-  }
-
-  void rejectBooking(Booking booking) {
-    _validateDriverRequest(booking);
-    if (booking.status != BookingStatus.pending) {
-      throw StateError('Cette demande n’est plus en attente.');
-    }
-    booking.status = BookingStatus.rejected;
-  }
-
-  void _validateDriverRequest(Booking booking) {
-    final exists = _bookings.any((item) => identical(item, booking));
-    if (!exists || !journeyById(booking.journeyId).own) {
-      throw StateError('Cette demande ne concerne pas un trajet conducteur.');
-    }
+    _bookings.add(Booking(journeyId: journey.id, seats: seats));
   }
 
   void cancel(Booking booking) {
-    if (!_bookings.any((item) => identical(item, booking)) ||
-        (booking.status != BookingStatus.pending &&
-            booking.status != BookingStatus.accepted)) {
+    if (!_bookings.remove(booking)) {
       throw StateError('Cette réservation n’existe plus.');
     }
-    booking.status = BookingStatus.cancelled;
   }
 }

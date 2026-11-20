@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'google_maps_embed.dart';
 import 'journeys.dart';
-import 'profile_screens.dart';
-import 'route_preview.dart';
+import 'passenger_profile_screen.dart';
 
 String dateText(DateTime date) =>
     '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
@@ -28,9 +28,8 @@ class DemoNotice extends StatelessWidget {
 }
 
 class MainScreen extends StatefulWidget {
-  const MainScreen({super.key, required this.store, this.routeLoader});
+  const MainScreen({super.key, required this.store});
   final JourneyStore store;
-  final RouteLoader? routeLoader;
   @override
   State<MainScreen> createState() => _MainScreenState();
 }
@@ -42,21 +41,12 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     final pages = [
-      SearchScreen(
-        store: widget.store,
-        onChanged: _refresh,
-        routeLoader: widget.routeLoader,
-      ),
+      SearchScreen(store: widget.store, onChanged: _refresh),
       MyJourneysScreen(store: widget.store, onChanged: _refresh),
-      PublishScreen(
+      PassengerProfileScreen(
         store: widget.store,
-        onPublished: () {
-          setState(() => _index = 1);
-        },
-      ),
-      ProfileScreen(
         onFindTrip: () => setState(() => _index = 0),
-        onPublish: () => setState(() => _index = 2),
+        onShowBookings: () => setState(() => _index = 1),
       ),
     ];
     return Scaffold(
@@ -77,14 +67,10 @@ class _MainScreenState extends State<MainScreen> {
         selectedIndex: _index,
         onDestinationSelected: (index) => setState(() => _index = index),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.search), label: 'Voyager'),
+          NavigationDestination(icon: Icon(Icons.search), label: 'Rechercher'),
           NavigationDestination(
-            icon: Icon(Icons.route_outlined),
-            label: 'Mes trajets',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.add_circle_outline),
-            label: 'Publier',
+            icon: Icon(Icons.bookmark_outline),
+            label: 'Mes réservations',
           ),
           NavigationDestination(
             icon: Icon(Icons.person_outline),
@@ -97,15 +83,9 @@ class _MainScreenState extends State<MainScreen> {
 }
 
 class SearchScreen extends StatefulWidget {
-  const SearchScreen({
-    super.key,
-    required this.store,
-    required this.onChanged,
-    this.routeLoader,
-  });
+  const SearchScreen({super.key, required this.store, required this.onChanged});
   final JourneyStore store;
   final VoidCallback onChanged;
-  final RouteLoader? routeLoader;
   @override
   State<SearchScreen> createState() => _SearchScreenState();
 }
@@ -145,7 +125,9 @@ class _SearchScreenState extends State<SearchScreen> {
   void _search() {
     if (_departure.text.trim().isEmpty || _destination.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Renseignez le départ et la destination.')),
+        const SnackBar(
+          content: Text('Renseignez le départ et la destination.'),
+        ),
       );
       return;
     }
@@ -159,7 +141,6 @@ class _SearchScreenState extends State<SearchScreen> {
           date: _date,
           passengers: _passengers,
           onChanged: widget.onChanged,
-          routeLoader: widget.routeLoader,
         ),
       ),
     );
@@ -172,18 +153,16 @@ class _SearchScreenState extends State<SearchScreen> {
       const Text('Bonjour !', style: TextStyle(fontSize: 16)),
       const SizedBox(height: 4),
       Text(
-        'Prendre un trajet',
+        'Où allez-vous ?',
         style: Theme.of(
           context,
         ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
       ),
       const SizedBox(height: 8),
-      const Text(
-        'Indiquez votre départ et votre destination pour trouver une place.',
-      ),
+      const Text('Partageons la route entre nos villes.'),
       const SizedBox(height: 24),
       const Text(
-        'Recherche entre villes',
+        'Entre villes',
         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
       ),
       const SizedBox(height: 16),
@@ -225,7 +204,7 @@ class _SearchScreenState extends State<SearchScreen> {
       FilledButton.icon(
         onPressed: _search,
         icon: const Icon(Icons.search),
-        label: const Text('Rechercher les trajets'),
+        label: const Text('Trouver un trajet'),
       ),
       const SizedBox(height: 24),
       const Card(
@@ -254,7 +233,6 @@ class ResultsScreen extends StatefulWidget {
     required this.date,
     required this.passengers,
     required this.onChanged,
-    this.routeLoader,
   });
   final JourneyStore store;
   final String departure;
@@ -262,7 +240,6 @@ class ResultsScreen extends StatefulWidget {
   final DateTime date;
   final int passengers;
   final VoidCallback onChanged;
-  final RouteLoader? routeLoader;
   @override
   State<ResultsScreen> createState() => _ResultsScreenState();
 }
@@ -311,7 +288,6 @@ class _ResultsScreenState extends State<ResultsScreen> {
                             store: widget.store,
                             journey: journey,
                             initialSeats: widget.passengers,
-                            routeLoader: widget.routeLoader,
                           ),
                         ),
                       );
@@ -393,55 +369,30 @@ class DetailScreen extends StatefulWidget {
     required this.store,
     required this.journey,
     required this.initialSeats,
-    this.routeLoader,
   });
   final JourneyStore store;
   final Journey journey;
   final int initialSeats;
-  final RouteLoader? routeLoader;
   @override
   State<DetailScreen> createState() => _DetailScreenState();
 }
 
 class _DetailScreenState extends State<DetailScreen> {
   late int _seats;
-  late Future<RouteLine> _routeFuture;
-
   @override
   void initState() {
     super.initState();
     _seats = widget.initialSeats;
-    _routeFuture = _loadRoute();
-  }
-
-  @override
-  void didUpdateWidget(covariant DetailScreen oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.journey.id != widget.journey.id) {
-      _routeFuture = _loadRoute();
-    }
-  }
-
-  Future<RouteLine> _loadRoute() => (widget.routeLoader ?? fetchRoadRoute)(
-    widget.journey.departure,
-    widget.journey.destination,
-    widget.journey.stop,
-  );
-
-  void _retryRoute() {
-    setState(() => _routeFuture = _loadRoute());
   }
 
   void _book() {
     try {
-      final booking = widget.store.book(widget.journey, _seats);
+      widget.store.book(widget.journey, _seats);
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Text(
-            booking.status == BookingStatus.accepted
-                ? 'Place confirmée automatiquement dans la démonstration.'
-                : 'Demande envoyée au conducteur dans la démonstration.',
+            'Réservation simulée, visible dans Mes trajets. Aucun paiement effectué.',
           ),
         ),
       );
@@ -462,180 +413,95 @@ class _DetailScreenState extends State<DetailScreen> {
         children: [
           const DemoNotice(),
           Expanded(
-            child: FutureBuilder<RouteLine>(
-              future: _routeFuture,
-              builder: (context, routeSnapshot) => ListView(
-                padding: const EdgeInsets.all(20),
-                children: [
-                  Text(
-                    '${journey.departure} → ${journey.destination}',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+            child: ListView(
+              padding: const EdgeInsets.all(20),
+              children: [
+                Text(
+                  '${journey.departure} → ${journey.destination}',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
                   ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Aperçu de l’itinéraire',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                  ),
-                  const SizedBox(height: 10),
-                  if (routeSnapshot.connectionState == ConnectionState.waiting)
-                    const Card(
-                      child: Padding(
-                        padding: EdgeInsets.all(24),
-                        child: Center(
-                          child: Column(
-                            children: [
-                              CircularProgressIndicator(),
-                              SizedBox(height: 12),
-                              Text('Calcul de l’itinéraire routier…'),
-                            ],
-                          ),
-                        ),
-                      ),
-                    )
-                  else if (routeSnapshot.hasError)
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              routeSnapshot.error.toString(),
-                              style: const TextStyle(color: Colors.red),
-                            ),
-                            const SizedBox(height: 8),
-                            OutlinedButton.icon(
-                              onPressed: _retryRoute,
-                              icon: const Icon(Icons.refresh),
-                              label: const Text('Réessayer'),
-                            ),
-                            const Text(
-                              'La réservation restera indisponible tant que l’itinéraire ne peut pas être affiché.',
-                              style: TextStyle(fontSize: 12),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  else
-                    RouteMapPreview(route: routeSnapshot.requireData),
-                  const SizedBox(height: 20),
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(18),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Départ : ${dateText(journey.when)} à ${timeText(journey.when)}',
-                          ),
-                          if (journey.meetingPoint != null &&
-                              journey.meetingPoint!.isNotEmpty)
-                            Text('Rendez-vous : ${journey.meetingPoint}'),
-                          if (journey.stop != null && journey.stop!.isNotEmpty)
-                            Text('Arrêt : ${journey.stop}'),
-                          if (journey.notes != null &&
-                              journey.notes!.isNotEmpty)
-                            Text('Note : ${journey.notes}'),
-                          const SizedBox(height: 12),
-                          Text('Conducteur fictif : ${journey.driver}'),
-                          Text(journey.vehicle),
-                          if (journey.luggage) const Text('Bagages acceptés'),
-                          if (journey.airConditioning)
-                            const Text('Climatisation'),
-                          if (journey.automatic)
-                            const Text('Réservation automatique (exemple)'),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  if (!journey.own && available > 0) ...[
-                    Row(
+                ),
+                const SizedBox(height: 16),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(18),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Expanded(child: Text('Nombre de places')),
-                        IconButton(
-                          onPressed: _seats > 1
-                              ? () => setState(() => _seats--)
-                              : null,
-                          icon: const Icon(Icons.remove_circle_outline),
-                          tooltip: 'Retirer une place',
+                        Text(
+                          'Départ : ${dateText(journey.when)} à ${timeText(journey.when)}',
                         ),
-                        Text('$_seats'),
-                        IconButton(
-                          onPressed: _seats < available
-                              ? () => setState(() => _seats++)
-                              : null,
-                          icon: const Icon(Icons.add_circle_outline),
-                          tooltip: 'Ajouter une place',
-                        ),
+                        if (journey.stop != null && journey.stop!.isNotEmpty)
+                          Text('Arrêt : ${journey.stop}'),
+                        const SizedBox(height: 12),
+                        Text('Conducteur fictif : ${journey.driver}'),
+                        Text(journey.vehicle),
+                        if (journey.luggage) const Text('Bagages acceptés'),
+                        if (journey.airConditioning)
+                          const Text('Climatisation'),
+                        if (journey.automatic)
+                          const Text('Réservation automatique (exemple)'),
                       ],
                     ),
-                    const SizedBox(height: 16),
-                    const Card(
-                      child: Padding(
-                        padding: EdgeInsets.all(14),
-                        child: Text(
-                          'Annulation et remboursement : règles à définir. Aucun paiement ne sera prélevé ou remboursé dans cette démonstration.',
-                        ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                GoogleMapsRouteEmbed(
+                  departure: journey.departure,
+                  destination: journey.destination,
+                  stop: journey.stop,
+                ),
+                const SizedBox(height: 16),
+                if (!journey.own && available > 0) ...[
+                  Row(
+                    children: [
+                      const Expanded(child: Text('Nombre de places')),
+                      IconButton(
+                        onPressed: _seats > 1
+                            ? () => setState(() => _seats--)
+                            : null,
+                        icon: const Icon(Icons.remove_circle_outline),
+                        tooltip: 'Retirer une place',
                       ),
+                      Text('$_seats'),
+                      IconButton(
+                        onPressed: _seats < available
+                            ? () => setState(() => _seats++)
+                            : null,
+                        icon: const Icon(Icons.add_circle_outline),
+                        tooltip: 'Ajouter une place',
+                      ),
+                    ],
+                  ),
+                  Text(
+                    'Total fictif : ${priceText(journey.price * _seats)}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
                     ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Aucun paiement ni contact avec un conducteur. Prix et identité fictifs.',
-                      style: TextStyle(color: Colors.black54),
-                    ),
-                  ] else
-                    Text(
-                      journey.own
-                          ? 'Vous avez publié cet exemple.'
-                          : 'Plus de place disponible.',
-                    ),
-                ],
-              ),
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton(
+                    onPressed: _book,
+                    child: const Text('Simuler la réservation'),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Aucun paiement ni contact avec un conducteur. Prix et identité fictifs.',
+                    style: TextStyle(color: Colors.black54),
+                  ),
+                ] else
+                  Text(
+                    journey.own
+                        ? 'Vous avez publié cet exemple.'
+                        : 'Plus de place disponible.',
+                  ),
+              ],
             ),
           ),
         ],
       ),
-      bottomNavigationBar: !journey.own && available > 0
-          ? FutureBuilder<RouteLine>(
-              future: _routeFuture,
-              builder: (context, routeSnapshot) {
-                if (!routeSnapshot.hasData) return const SizedBox.shrink();
-                return Material(
-                  color: Theme.of(context).colorScheme.surface,
-                  elevation: 4,
-                  child: SafeArea(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'Total fictif : ${priceText(journey.price * _seats)}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          SizedBox(
-                            width: double.infinity,
-                            child: FilledButton(
-                              onPressed: _book,
-                              child: const Text('Simuler la réservation'),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              },
-            )
-          : null,
     );
   }
 }
@@ -657,8 +523,6 @@ class _PublishScreenState extends State<PublishScreen> {
   final _from = TextEditingController(text: 'Ouagadougou');
   final _to = TextEditingController(text: 'Bobo-Dioulasso');
   final _stop = TextEditingController();
-  final _meetingPoint = TextEditingController();
-  final _notes = TextEditingController();
   final _price = TextEditingController();
   late DateTime _date;
   TimeOfDay _time = const TimeOfDay(hour: 7, minute: 0);
@@ -677,8 +541,6 @@ class _PublishScreenState extends State<PublishScreen> {
     _from.dispose();
     _to.dispose();
     _stop.dispose();
-    _meetingPoint.dispose();
-    _notes.dispose();
     _price.dispose();
     super.dispose();
   }
@@ -707,8 +569,6 @@ class _PublishScreenState extends State<PublishScreen> {
         departure: _from.text,
         destination: _to.text,
         stop: _stop.text,
-        meetingPoint: _meetingPoint.text,
-        notes: _notes.text,
         when: DateTime(
           _date.year,
           _date.month,
@@ -771,22 +631,6 @@ class _PublishScreenState extends State<PublishScreen> {
           controller: _stop,
           decoration: const InputDecoration(
             labelText: 'Arrêt en route (facultatif)',
-          ),
-        ),
-        const SizedBox(height: 12),
-        TextFormField(
-          controller: _meetingPoint,
-          decoration: const InputDecoration(
-            labelText: 'Point de rendez-vous (facultatif)',
-          ),
-        ),
-        const SizedBox(height: 12),
-        TextFormField(
-          controller: _notes,
-          maxLength: 300,
-          maxLines: 2,
-          decoration: const InputDecoration(
-            labelText: 'Note pour les passagers (facultatif)',
           ),
         ),
         const SizedBox(height: 12),
@@ -870,52 +714,26 @@ class MyJourneysScreen extends StatefulWidget {
 }
 
 class _MyJourneysScreenState extends State<MyJourneysScreen> {
-  String _bookingStatusLabel(BookingStatus status) => switch (status) {
-    BookingStatus.pending => 'En attente du conducteur',
-    BookingStatus.accepted => 'Confirmée dans la démo',
-    BookingStatus.rejected => 'Refusée dans la démo',
-    BookingStatus.cancelled => 'Annulée dans la démo',
-  };
-
-  void _updateRequest(Booking booking, {required bool accept}) {
-    try {
-      if (accept) {
-        widget.store.acceptBooking(booking);
-      } else {
-        widget.store.rejectBooking(booking);
-      }
-      setState(() {});
-      widget.onChanged();
-    } on StateError catch (error) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final own = widget.store.journeys.where((journey) => journey.own).toList();
-    final bookings = widget.store.bookings
-        .where((booking) => !widget.store.journeyById(booking.journeyId).own)
-        .toList();
+    final bookings = widget.store.bookings;
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
         Text(
-          'Mes trajets',
+          'Mes réservations',
           style: Theme.of(
             context,
           ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        const Text('Données de démonstration de cette session.'),
+        const Text('Vos demandes de réservation dans cette démonstration.'),
         const SizedBox(height: 20),
-        if (own.isEmpty && bookings.isEmpty)
-          const Text('Aucun trajet ni réservation simulée pour le moment.'),
+        if (bookings.isEmpty)
+          const Text('Aucune réservation simulée pour le moment.'),
         if (bookings.isNotEmpty)
           const Text(
-            'Mes demandes de réservation',
+            'Réservations simulées',
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
           ),
         ...bookings.map((booking) {
@@ -933,105 +751,19 @@ class _MyJourneysScreenState extends State<MyJourneysScreen> {
                   Text(
                     '${dateText(journey.when)} · ${booking.seats} place(s) · ${priceText(journey.price * booking.seats)}',
                   ),
-                  const SizedBox(height: 8),
-                  Text(_bookingStatusLabel(booking.status)),
-                  if (booking.status == BookingStatus.pending ||
-                      booking.status == BookingStatus.accepted)
-                    TextButton(
-                      onPressed: () {
-                        widget.store.cancel(booking);
-                        setState(() {});
-                        widget.onChanged();
-                      },
-                      child: Text(
-                        booking.status == BookingStatus.pending
-                            ? 'Annuler ma demande'
-                            : 'Annuler ma réservation',
-                      ),
-                    ),
-                  if (booking.status == BookingStatus.accepted)
-                    const Text(
-                      'Règles de remboursement à définir ; aucun paiement réel.',
-                      style: TextStyle(fontSize: 12, color: Colors.black54),
-                    ),
+                  TextButton(
+                    onPressed: () {
+                      widget.store.cancel(booking);
+                      setState(() {});
+                      widget.onChanged();
+                    },
+                    child: const Text('Annuler la simulation'),
+                  ),
                 ],
               ),
             ),
           );
         }),
-        if (own.isNotEmpty) ...[
-          const SizedBox(height: 20),
-          const Text(
-            'Mes trajets comme conducteur',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-          ),
-          const SizedBox(height: 8),
-          ...own.map((journey) {
-            final requests = widget.store.bookingsForJourney(journey.id);
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                JourneyCard(
-                  journey: journey,
-                  available: widget.store.availableSeats(journey),
-                ),
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Passagers et demandes',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        if (requests.isEmpty)
-                          const Padding(
-                            padding: EdgeInsets.only(top: 8),
-                            child: Text('Aucune demande pour ce trajet.'),
-                          ),
-                        ...requests.map(
-                          (booking) => Padding(
-                            padding: const EdgeInsets.only(top: 12),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  '${booking.passenger} · ${booking.seats} place(s)',
-                                ),
-                                Text(_bookingStatusLabel(booking.status)),
-                                if (booking.status == BookingStatus.pending)
-                                  Wrap(
-                                    spacing: 8,
-                                    children: [
-                                      OutlinedButton(
-                                        onPressed: () => _updateRequest(
-                                          booking,
-                                          accept: false,
-                                        ),
-                                        child: const Text('Refuser'),
-                                      ),
-                                      FilledButton(
-                                        onPressed: () => _updateRequest(
-                                          booking,
-                                          accept: true,
-                                        ),
-                                        child: const Text('Accepter'),
-                                      ),
-                                    ],
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            );
-          }),
-        ],
       ],
     );
   }

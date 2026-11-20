@@ -2,17 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'journeys.dart';
-import 'route_preview.dart';
 import 'screens.dart';
 
-void main() =>
-    runApp(FasoCovoitApp(store: JourneyStore.demo(includeDriverRequest: true)));
+void main() => runApp(FasoCovoitApp(store: JourneyStore.demo()));
 
 class FasoCovoitApp extends StatelessWidget {
-  const FasoCovoitApp({super.key, required this.store, this.routeLoader});
+  const FasoCovoitApp({super.key, required this.store});
 
   final JourneyStore store;
-  final RouteLoader? routeLoader;
 
   @override
   Widget build(BuildContext context) {
@@ -39,7 +36,7 @@ class FasoCovoitApp extends StatelessWidget {
       supportedLocales: const [Locale('fr')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
       theme: theme,
-      home: MainScreen(store: store, routeLoader: routeLoader),
+      home: MainScreen(store: store),
     );
   }
 }
