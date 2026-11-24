@@ -13,6 +13,7 @@ import '../ui.dart';
 import 'colis.dart';
 import 'devenir.dart';
 import 'jour_j.dart';
+import 'lieux.dart';
 import 'messages_profil.dart';
 import 'portefeuille.dart';
 
@@ -107,14 +108,27 @@ class AccueilOnglet extends StatefulWidget {
 }
 
 class _AccueilOngletState extends State<AccueilOnglet> {
-  bool _inter = true;
+  Lieu _depart = lOuagaGare;
+  Lieu _arrivee = lKoudCentre;
   int _places = 1;
   bool _femmes = false;
+
+  bool get _inter => _depart.ville != _arrivee.ville;
+
+  Future<void> _choisir({required bool depart}) async {
+    final l = await choisirLieu(
+      context,
+      titre: depart ? "D'où partez-vous ?" : 'Où allez-vous ?',
+      actuel: depart ? _depart : _arrivee,
+      exclu: depart ? _arrivee : _depart,
+    );
+    if (l == null) return;
+    setState(() => depart ? _depart = l : _arrivee = l);
+  }
 
   @override
   Widget build(BuildContext context) {
     final s = AppScope.of(context);
-    final ligne = ligneParId(_inter ? 'ouaga-koudougou' : 'dassasgho-ouaga2000');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -153,7 +167,16 @@ class _AccueilOngletState extends State<AccueilOnglet> {
             Onglets(
               labels: const ['En ville', 'Entre villes'],
               index: _inter ? 1 : 0,
-              onChanged: (i) => setState(() => _inter = i == 1),
+              onChanged: (i) => setState(() {
+                // Raccourcis : un trajet type pour chaque mode.
+                if (i == 1 && !_inter) {
+                  _depart = lOuagaGare;
+                  _arrivee = lKoudCentre;
+                } else if (i == 0 && _inter) {
+                  _depart = lDassasgho;
+                  _arrivee = lOuaga2000;
+                }
+              }),
             ),
             Carte(
               child: Column(
@@ -164,24 +187,21 @@ class _AccueilOngletState extends State<AccueilOnglet> {
                     haut: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const Doux('Départ'),
-                        Text(
-                          ligne.depart.complet,
-                          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                        ChampLieu(
+                          label: 'Départ',
+                          valeur: _depart,
+                          indication: 'Choisir le départ',
+                          onTap: () => _choisir(depart: true),
                         ),
                         const SizedBox(height: 14),
                         const Sep(),
                       ],
                     ),
-                    bas: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Doux('Arrivée'),
-                        Text(
-                          ligne.interVilles ? ligne.arrivee.complet : ligne.arrivee.quartier,
-                          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
-                        ),
-                      ],
+                    bas: ChampLieu(
+                      label: 'Arrivée',
+                      valeur: _arrivee,
+                      indication: 'Où allez-vous ?',
+                      onTap: () => _choisir(depart: false),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -224,7 +244,7 @@ class _AccueilOngletState extends State<AccueilOnglet> {
               icon: Icons.search_rounded,
               onPressed: () => ouvrir(
                 context,
-                ResultatsEcran(interVilles: _inter, places: _places, conductrices: _femmes),
+                ResultatsEcran(depart: _depart, arrivee: _arrivee, places: _places, conductrices: _femmes),
               ),
             ),
             Column(
@@ -234,7 +254,7 @@ class _AccueilOngletState extends State<AccueilOnglet> {
                 const SizedBox(height: 8),
                 Carte(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  onTap: () => ouvrir(context, const ResultatsEcran(interVilles: false, places: 1)),
+                  onTap: () => ouvrir(context, const ResultatsEcran(depart: lDassasgho, arrivee: lOuaga2000, places: 1)),
                   child: const Row(
                     children: [
                       Icon(Icons.sync_rounded, size: 22),
@@ -272,10 +292,19 @@ class _AccueilOngletState extends State<AccueilOnglet> {
 // ---------------------------------------------------------------------------
 
 class ResultatsEcran extends StatefulWidget {
-  const ResultatsEcran({super.key, required this.interVilles, required this.places, this.conductrices = false});
-  final bool interVilles;
+  const ResultatsEcran({
+    super.key,
+    required this.depart,
+    required this.arrivee,
+    required this.places,
+    this.conductrices = false,
+  });
+  final Lieu depart;
+  final Lieu arrivee;
   final int places;
   final bool conductrices;
+
+  bool get interVilles => depart.ville != arrivee.ville;
 
   @override
   State<ResultatsEcran> createState() => _ResultatsEcranState();
@@ -288,14 +317,16 @@ class _ResultatsEcranState extends State<ResultatsEcran> {
   @override
   Widget build(BuildContext context) {
     final s = AppScope.of(context);
-    final tous = s.rechercher(interVilles: widget.interVilles, places: widget.places);
+    final d = widget.depart, a = widget.arrivee;
+    final tous = s.rechercher(depart: d, arrivee: a, places: widget.places);
     final liste = s.rechercher(
-      interVilles: widget.interVilles,
+      depart: d,
+      arrivee: a,
       places: widget.places,
       conductrices: _conductrices,
       matin: _matin,
     );
-    final ligne = ligneParId(widget.interVilles ? 'ouaga-koudougou' : 'dassasgho-ouaga2000');
+    final ligne = Ligne.entre(d, a);
     final tarif = calculerTarif(ligne);
     final quand = widget.interVilles
         ? jourRelatifComplet(s.maintenant.add(const Duration(days: 1)), s.maintenant)
@@ -303,7 +334,7 @@ class _ResultatsEcranState extends State<ResultatsEcran> {
     return Ecran(
       children: [
         Barre(
-          titre: widget.interVilles ? 'Ouagadougou → Koudougou' : 'Dassasgho → Ouaga 2000',
+          titre: widget.interVilles ? '${d.ville} → ${a.ville}' : '${capitaliser(d.quartier)} → ${capitaliser(a.quartier)}',
           sousTitre: '$quand · ${pluriel(widget.places, 'place')}',
         ),
         SingleChildScrollView(
@@ -345,9 +376,12 @@ class _ResultatsEcranState extends State<ResultatsEcran> {
           gap: 12,
           children: [
             if (liste.isEmpty)
-              const Carte(
+              Carte(
                 child: Text(
-                  'Aucun trajet ne correspond. Essayez sans filtre ou à un autre horaire.',
+                  tous.isEmpty
+                      ? 'Aucun conducteur ne propose encore ce trajet. Essayez un lieu proche, '
+                            'ou les trajets de démonstration : Ouaga → Koudougou, Dassasgho → Ouaga 2000.'
+                      : 'Aucun trajet ne correspond. Essayez sans filtre ou à un autre horaire.',
                   style: T.petit,
                 ),
               ),

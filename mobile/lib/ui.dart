@@ -1071,7 +1071,9 @@ class Champ extends StatelessWidget {
     this.label,
     this.rond = 16,
     this.hauteur,
+    this.autofocus = false,
   });
+  final bool autofocus;
   final TextEditingController? controller;
   final String? hint;
   final TextInputType? clavier;
@@ -1097,6 +1099,7 @@ class Champ extends StatelessWidget {
       textField: true,
       child: TextField(
         controller: controller,
+        autofocus: autofocus,
         keyboardType: clavier,
         maxLines: lignes,
         minLines: lignes,

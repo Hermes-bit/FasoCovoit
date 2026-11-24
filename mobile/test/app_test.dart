@@ -95,6 +95,15 @@ void main() {
     expect(s.compteExiste('65432109'), isFalse);
   });
 
+  testWidgets('passager : choisir un trajet en ville', (tester) async {
+    await lancer(tester, connecte: true);
+    await toucher(tester, find.text('En ville'));
+    expect(find.text('Ouagadougou, Dassasgho'), findsOneWidget);
+    await toucher(tester, bouton('Rechercher'));
+    expect(find.text('Dassasgho → Ouaga 2000'), findsOneWidget);
+    expect(find.text('Ousmane B.'), findsOneWidget);
+  });
+
   testWidgets('connexion Google annoncée mais pas encore branchée', (tester) async {
     await lancer(tester);
     await toucher(tester, find.text('Continuer avec Google'));
@@ -161,10 +170,23 @@ void main() {
     await toucher(tester, bouton('Publier mon premier trajet'));
 
     expect(find.text('Publier un trajet'), findsOneWidget);
+    // Sans destination, on ne peut pas publier.
+    await toucher(tester, bouton('Publier le trajet'));
+    expect(s.trajetsPublies, isEmpty);
+
+    // Le conducteur cherche et choisit sa destination.
+    await toucher(tester, find.text('Où allez-vous ?'));
+    await tester.enterText(find.byType(TextField), 'secteur');
+    await tester.pumpAndSettle();
+    await toucher(tester, find.text('Secteur 7'));
+    expect(find.text('Koudougou, Secteur 7'), findsOneWidget);
+    expect(find.textContaining('98 km'), findsOneWidget);
+
     await toucher(tester, bouton('Publier le trajet'));
 
     expect(s.mode, Mode.conducteur);
     expect(s.trajetsPublies, hasLength(1));
+    expect(s.trajetsPublies.single.ligne.arrivee, lKoudS7);
     expect(find.text('Bonjour Awa'), findsOneWidget);
     expect(find.text('1 demande à traiter'), findsOneWidget);
   });

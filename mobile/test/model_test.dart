@@ -79,6 +79,46 @@ void main() {
     });
   });
 
+  group('trajets entre deux lieux', () {
+    test('Ouaga → n’importe quel quartier de Koudougou reprend la ligne connue', () {
+      final l = Ligne.entre(lOuagaGare, lKoudS7);
+      expect(l.km, 98);
+      expect(l.car, 2000);
+      expect(l.interVilles, isTrue);
+      expect(calculerTarif(l).plafond, 2500);
+      expect(Ligne.entre(lCissin, const Lieu('Koudougou', 'Chez Tanti')).km, 98);
+    });
+
+    test('trajet inconnu : distance et prix du car estimés', () {
+      final l = Ligne.entre(lKoudCentre, lBoboCentre);
+      expect(l.km, inInclusiveRange(250, 320));
+      expect(l.car, greaterThan(4000));
+      final t = calculerTarif(l);
+      expect(t.plafond, lessThanOrEqualTo(t.limiteFrais));
+      expect(t.conseille, lessThanOrEqualTo(t.plafond));
+    });
+
+    test('en ville : Dassasgho → Ouaga 2000 fait environ 9 km', () {
+      final l = Ligne.entre(lDassasgho, lOuaga2000);
+      expect(l.km, inInclusiveRange(7, 11));
+      expect(l.interVilles, isFalse);
+      expect(l.rdv, lDassasgho.rdv);
+    });
+
+    test('recherche par lieux choisis', () {
+      final s = etat();
+      expect(s.rechercher(depart: lDassasgho, arrivee: lOuaga2000), hasLength(2));
+      expect(s.rechercher(depart: lTampouy, arrivee: lZogona), isEmpty);
+      expect(s.rechercher(depart: lCissin, arrivee: lKoudS7), hasLength(3));
+      expect(s.rechercher(depart: lOuagaGare, arrivee: lBoboCentre), isEmpty);
+    });
+
+    test('la recherche ignore accents et majuscules', () {
+      expect(normaliser('Université Ki-Zerbo'), 'universite ki-zerbo');
+      expect(normaliser("PATTE D'OIE"), "patte d'oie");
+    });
+  });
+
   group('tarifs (R30 à R41)', () {
     test('Ouaga → Koudougou : plancher, conseillé et plafond de la maquette', () {
       final t = calculerTarif(ligneParId('ouaga-koudougou'));
@@ -222,6 +262,28 @@ void main() {
       expect(c.abonnement!.offertJusquau, DateTime(2026, 12, 24, 18));
       c.payerAbonnement();
       expect(c.abonnement!.prochainPaiement, DateTime(2027, 3, 24, 18));
+    });
+
+    test('publier vers une destination choisie, mais jamais vers le départ', () {
+      final s = conducteurActif();
+      final t = s.publier(
+        ligne: Ligne.entre(lOuagaGare, lKoudUniv),
+        depart: maintenant.add(const Duration(days: 2)),
+        places: 3,
+        prix: 2000,
+        rdv: '  Devant la station  ',
+      );
+      expect(t.ligne.arrivee, lKoudUniv);
+      expect(t.rdv, 'Devant la station');
+      expect(
+        () => s.publier(
+          ligne: Ligne.entre(lDassasgho, lDassasgho),
+          depart: maintenant.add(const Duration(days: 2)),
+          places: 3,
+          prix: 400,
+        ),
+        throwsA(isA<ErreurMetier>()),
+      );
     });
 
     test('publier refuse un prix au-dessus du plafond', () {

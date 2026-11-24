@@ -55,13 +55,90 @@ class Conducteur extends Personne {
 }
 
 class Lieu {
-  const Lieu(this.ville, this.quartier);
+  const Lieu(this.ville, this.quartier, {this.lat, this.lng, this.rdv});
   final String ville;
   final String quartier;
+
+  /// Coordonnées approximatives (sinon : centre de la ville).
+  final double? lat;
+  final double? lng;
+
+  /// Point de rendez-vous habituel proposé au conducteur.
+  final String? rdv;
+
   String get complet => '$ville, $quartier';
+
+  (double, double) get position =>
+      lat != null && lng != null ? (lat!, lng!) : (centresVilles[ville] ?? (12.3714, -1.5197));
+
+  @override
+  bool operator ==(Object other) =>
+      other is Lieu && other.ville == ville && other.quartier.toLowerCase() == quartier.toLowerCase();
+
+  @override
+  int get hashCode => Object.hash(ville, quartier.toLowerCase());
 }
 
 String villeCourte(String ville) => ville == 'Ouagadougou' ? 'Ouaga' : ville;
+
+/// Villes desservies (centre approximatif).
+const centresVilles = <String, (double, double)>{
+  'Ouagadougou': (12.3714, -1.5197),
+  'Koudougou': (12.2526, -2.3627),
+  'Bobo-Dioulasso': (11.1771, -4.2979),
+};
+
+// Lieux connus (coordonnées approximatives, à remplacer par Google Places).
+const lOuagaGare = Lieu('Ouagadougou', 'gare routière', lat: 12.3410, lng: -1.5450, rdv: "Devant l'entrée principale");
+const lOuagaCentre = Lieu('Ouagadougou', 'centre-ville', lat: 12.3686, lng: -1.5275, rdv: 'Place des Nations unies');
+const lDassasgho = Lieu('Ouagadougou', 'Dassasgho', lat: 12.3780, lng: -1.4820, rdv: 'Rue 29.12, devant la pharmacie');
+const lOuaga2000 = Lieu('Ouagadougou', 'Ouaga 2000', lat: 12.3170, lng: -1.4870, rdv: 'Avenue Pascal Zagré');
+const lTampouy = Lieu('Ouagadougou', 'Tampouy', lat: 12.4100, lng: -1.5550, rdv: 'Rond-point de Tampouy');
+const lZogona = Lieu('Ouagadougou', 'Zogona', lat: 12.3780, lng: -1.5020, rdv: 'Marché de Zogona');
+const lPissy = Lieu('Ouagadougou', 'Pissy', lat: 12.3300, lng: -1.5700, rdv: 'Station Total de Pissy');
+const lGounghin = Lieu('Ouagadougou', 'Gounghin', lat: 12.3650, lng: -1.5550, rdv: 'Marché de Gounghin');
+const lCissin = Lieu('Ouagadougou', 'Cissin', lat: 12.3300, lng: -1.5350, rdv: 'Rond-point de Cissin');
+const lPatteOie = Lieu('Ouagadougou', "Patte d'Oie", lat: 12.3360, lng: -1.5050, rdv: "Échangeur de la Patte d'Oie");
+const lTanghin = Lieu('Ouagadougou', 'Tanghin', lat: 12.4050, lng: -1.5150, rdv: 'Barrage de Tanghin');
+const lUnivOuaga = Lieu('Ouagadougou', 'Université Joseph Ki-Zerbo', lat: 12.3770, lng: -1.4990, rdv: "Entrée de l'université");
+const lAeroport = Lieu('Ouagadougou', 'aéroport', lat: 12.3530, lng: -1.5120, rdv: 'Parking des arrivées');
+const lKoudCentre = Lieu('Koudougou', 'centre-ville', lat: 12.2526, lng: -2.3627, rdv: 'Devant la mairie');
+const lKoudGare = Lieu('Koudougou', 'gare routière', lat: 12.2470, lng: -2.3650, rdv: 'Devant la gare routière');
+const lKoudUniv = Lieu('Koudougou', 'Université Norbert Zongo', lat: 12.2650, lng: -2.3500, rdv: "Entrée de l'université");
+const lKoudS7 = Lieu('Koudougou', 'Secteur 7', lat: 12.2600, lng: -2.3750, rdv: 'Marché du secteur 7');
+const lBoboGare = Lieu('Bobo-Dioulasso', 'gare routière', lat: 11.1700, lng: -4.2900, rdv: 'Devant la gare routière');
+const lBoboCentre = Lieu('Bobo-Dioulasso', 'centre-ville', lat: 11.1771, lng: -4.2979, rdv: 'Grand marché');
+
+const lieux = <Lieu>[
+  lOuagaGare, lOuagaCentre, lDassasgho, lOuaga2000, lTampouy, lZogona, lPissy, lGounghin,
+  lCissin, lPatteOie, lTanghin, lUnivOuaga, lAeroport,
+  lKoudCentre, lKoudGare, lKoudUniv, lKoudS7,
+  lBoboGare, lBoboCentre,
+];
+
+/// Distance à vol d'oiseau, en km.
+double distanceKm(Lieu a, Lieu b) {
+  final (la1, lo1) = a.position;
+  final (la2, lo2) = b.position;
+  double rad(double d) => d * math.pi / 180;
+  final dLat = rad(la2 - la1);
+  final dLng = rad(lo2 - lo1);
+  final h = math.pow(math.sin(dLat / 2), 2) +
+      math.cos(rad(la1)) * math.cos(rad(la2)) * math.pow(math.sin(dLng / 2), 2);
+  return 2 * 6371 * math.asin(math.sqrt(h));
+}
+
+/// Minuscules sans accents, pour la recherche de lieux.
+String normaliser(String s) {
+  const avec = 'àâäáãéèêëíìîïóòôöõúùûüçñ';
+  const sans = 'aaaaaeeeeiiiiooooouuuucn';
+  final b = StringBuffer();
+  for (final ch in s.toLowerCase().split('')) {
+    final i = avec.indexOf(ch);
+    b.write(i >= 0 ? sans[i] : ch);
+  }
+  return b.toString().trim();
+}
 
 // ---------------------------------------------------------------------------
 // Tarifs (règles R30 à R41, reprises du simulateur du back-office)
@@ -94,6 +171,34 @@ class Ligne {
   String get titre => interVilles
       ? '${villeCourte(depart.ville)} → ${villeCourte(arrivee.ville)}'
       : '${depart.quartier} → ${arrivee.quartier}';
+
+  /// Trajet entre deux lieux quelconques : distance, durée et prix du car
+  /// estimés (valeurs connues reprises pour les lignes fréquentes).
+  factory Ligne.entre(Lieu a, Lieu b) {
+    final inter = a.ville != b.ville;
+    Ligne? connue;
+    for (final l in lignes) {
+      if (inter && l.interVilles && l.depart.ville == a.ville && l.arrivee.ville == b.ville) {
+        connue = l;
+        break;
+      }
+    }
+    final vol = distanceKm(a, b);
+    final km = connue?.km ?? math.max(2, (vol * (inter ? 1.1 : 1.3)).round());
+    final minutes = inter ? km / 65 * 60 : math.max(10.0, km / 22 * 60);
+    return Ligne(
+      id: '${a.ville}/${a.quartier}>${b.ville}/${b.quartier}',
+      depart: a,
+      arrivee: b,
+      km: km,
+      duree: connue?.duree ?? Duration(minutes: (minutes / 5).round() * 5),
+      rdv: a.rdv ?? 'À préciser avec les passagers',
+      interVilles: inter,
+      // Prix du car : connu sur les lignes fréquentes, sinon environ 20 F/km.
+      car: !inter ? 0 : (connue?.car ?? math.max(500, (km * 20 / 100).round() * 100)),
+      carVip: connue?.carVip ?? 0,
+    );
+  }
 }
 
 enum Vehicule {
@@ -182,8 +287,8 @@ Tarif calculerTarif(
 const lignes = <Ligne>[
   Ligne(
     id: 'ouaga-koudougou',
-    depart: Lieu('Ouagadougou', 'gare routière'),
-    arrivee: Lieu('Koudougou', 'centre-ville'),
+    depart: lOuagaGare,
+    arrivee: lKoudCentre,
     km: 98,
     duree: Duration(minutes: 90),
     rdv: "Devant l'entrée principale",
@@ -191,8 +296,8 @@ const lignes = <Ligne>[
   ),
   Ligne(
     id: 'koudougou-ouaga',
-    depart: Lieu('Koudougou', 'gare routière'),
-    arrivee: Lieu('Ouagadougou', 'gare routière'),
+    depart: lKoudGare,
+    arrivee: lOuagaGare,
     km: 98,
     duree: Duration(minutes: 90),
     rdv: 'Devant la gare routière',
@@ -200,8 +305,8 @@ const lignes = <Ligne>[
   ),
   Ligne(
     id: 'ouaga-bobo',
-    depart: Lieu('Ouagadougou', 'gare routière'),
-    arrivee: Lieu('Bobo-Dioulasso', 'centre-ville'),
+    depart: lOuagaGare,
+    arrivee: lBoboCentre,
     km: 360,
     duree: Duration(hours: 5),
     rdv: "Devant l'entrée principale",
@@ -210,8 +315,8 @@ const lignes = <Ligne>[
   ),
   Ligne(
     id: 'dassasgho-ouaga2000',
-    depart: Lieu('Ouagadougou', 'Dassasgho'),
-    arrivee: Lieu('Ouagadougou', 'Ouaga 2000'),
+    depart: lDassasgho,
+    arrivee: lOuaga2000,
     km: 9,
     duree: Duration(minutes: 25),
     rdv: 'Rue 29.12, devant la pharmacie',
@@ -219,8 +324,8 @@ const lignes = <Ligne>[
   ),
   Ligne(
     id: 'tampouy-zogona',
-    depart: Lieu('Ouagadougou', 'Tampouy'),
-    arrivee: Lieu('Ouagadougou', 'Zogona'),
+    depart: lTampouy,
+    arrivee: lZogona,
     km: 8,
     duree: Duration(minutes: 25),
     rdv: 'Rond-point de Tampouy',
@@ -869,14 +974,31 @@ class AppState extends ChangeNotifier {
 
   // --------------------------------------------------------------- recherche
 
+  /// Rayon (km) autour du départ et de l'arrivée pour un trajet en ville.
+  static const rayonVille = 3.0;
+
+  /// Trajets disponibles. Avec [depart] et [arrivee] : entre villes, mêmes
+  /// villes ; en ville, départ et arrivée à moins de [rayonVille] km.
   List<Trajet> rechercher({
-    required bool interVilles,
+    bool? interVilles,
+    Lieu? depart,
+    Lieu? arrivee,
     int places = 1,
     bool conductrices = false,
     bool matin = false,
   }) {
+    final inter = depart != null && arrivee != null ? depart.ville != arrivee.ville : (interVilles ?? true);
     return trajets.where((t) {
-      if (t.interVilles != interVilles) return false;
+      if (t.interVilles != inter) return false;
+      if (depart != null && arrivee != null) {
+        if (inter && (t.depart.ville != depart.ville || t.arrivee.ville != arrivee.ville)) return false;
+        if (!inter &&
+            (t.depart.ville != depart.ville ||
+                distanceKm(t.depart, depart) > rayonVille ||
+                distanceKm(t.arrivee, arrivee) > rayonVille)) {
+          return false;
+        }
+      }
       if (!t.heureDepart.isAfter(maintenant)) return false;
       if (t.placesLibres < places) return false;
       if (t.entreFemmes && !femme) return false;
@@ -1253,8 +1375,12 @@ class AppState extends ChangeNotifier {
     bool entreFemmes = false,
     bool especes = true,
     bool mobile = true,
+    String? rdv,
   }) {
     if (!estConducteur) throw ErreurMetier("Votre compte conducteur n'est pas actif.");
+    if (ligne.depart == ligne.arrivee) {
+      throw ErreurMetier('Le départ et la destination doivent être différents.');
+    }
     if (suspendu) {
       throw ErreurMetier('Compte suspendu jusqu\'au ${jourCourt(suspenduJusquau!)}.');
     }
@@ -1282,7 +1408,7 @@ class AppState extends ChangeNotifier {
       depart: depart,
       places: places,
       prix: prix,
-      rdv: ligne.rdv,
+      rdv: rdv == null || rdv.trim().isEmpty ? ligne.rdv : rdv.trim(),
       accepteAuto: accepteAuto,
       regulier: regulier,
       jours: jours,
@@ -1555,8 +1681,8 @@ class AppState extends ChangeNotifier {
       plaque: '11 FA 3390',
     );
 
-    const ouaga = Lieu('Ouagadougou', 'gare routière');
-    const koud = Lieu('Koudougou', 'centre-ville');
+    const ouaga = lOuagaGare;
+    const koud = lKoudCentre;
     trajets.addAll([
       Trajet(
         id: 't1',
@@ -1574,8 +1700,8 @@ class AppState extends ChangeNotifier {
       Trajet(
         id: 't2',
         conducteur: aminata,
-        depart: const Lieu('Ouagadougou', 'Tampouy'),
-        arrivee: const Lieu('Koudougou', 'Université'),
+        depart: lTampouy,
+        arrivee: lKoudUniv,
         rdv: 'Rond-point de Tampouy',
         heureDepart: a(demain, 9, 30),
         duree: const Duration(minutes: 90),
@@ -1588,8 +1714,8 @@ class AppState extends ChangeNotifier {
       Trajet(
         id: 't3',
         conducteur: boukary,
-        depart: const Lieu('Ouagadougou', 'Pissy'),
-        arrivee: const Lieu('Koudougou', 'gare routière'),
+        depart: lPissy,
+        arrivee: lKoudGare,
         rdv: 'Station Total de Pissy',
         heureDepart: a(demain, 16),
         duree: const Duration(minutes: 100),
@@ -1601,8 +1727,8 @@ class AppState extends ChangeNotifier {
       Trajet(
         id: 'v1',
         conducteur: ousmane,
-        depart: const Lieu('Ouagadougou', 'Dassasgho'),
-        arrivee: const Lieu('Ouagadougou', 'Ouaga 2000'),
+        depart: lDassasgho,
+        arrivee: lOuaga2000,
         rdv: 'Rue 29.12, devant la pharmacie',
         heureDepart: arrondi(const Duration(minutes: 20)),
         duree: const Duration(minutes: 25),
@@ -1614,8 +1740,8 @@ class AppState extends ChangeNotifier {
       Trajet(
         id: 'v2',
         conducteur: aminata,
-        depart: const Lieu('Ouagadougou', 'Dassasgho'),
-        arrivee: const Lieu('Ouagadougou', 'Ouaga 2000'),
+        depart: lDassasgho,
+        arrivee: lOuaga2000,
         rdv: 'Marché de Dassasgho',
         heureDepart: arrondi(const Duration(minutes: 45)),
         duree: const Duration(minutes: 25),
@@ -1649,8 +1775,8 @@ class AppState extends ChangeNotifier {
     final regulier = Trajet(
       id: 'r1',
       conducteur: issouf,
-      depart: const Lieu('Ouagadougou', 'Dassasgho'),
-      arrivee: const Lieu('Ouagadougou', 'Ouaga 2000'),
+      depart: lDassasgho,
+      arrivee: lOuaga2000,
       rdv: 'Rue 29.12',
       heureDepart: a(jour(n).add(const Duration(days: 2)), 7, 15),
       duree: const Duration(minutes: 25),
@@ -1676,8 +1802,8 @@ class AppState extends ChangeNotifier {
     final annule = Trajet(
       id: 'h2',
       conducteur: salif,
-      depart: const Lieu('Ouagadougou', 'Pissy'),
-      arrivee: const Lieu('Ouagadougou', 'Zogona'),
+      depart: lPissy,
+      arrivee: lZogona,
       rdv: 'Pissy',
       heureDepart: a(jour(n).subtract(const Duration(days: 12)), 12),
       duree: const Duration(minutes: 30),

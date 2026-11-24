@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../appel.dart';
 import '../formats.dart';
+import '../google_maps_embed.dart';
 import '../model.dart';
 import '../painters.dart';
 import '../theme.dart';
@@ -10,6 +12,7 @@ import '../ui.dart';
 import 'colis.dart';
 import 'devenir.dart';
 import 'jour_j.dart';
+import 'lieux.dart';
 import 'messages_profil.dart';
 import 'passager.dart';
 import 'portefeuille.dart';
@@ -275,7 +278,9 @@ class PublierEcran extends StatefulWidget {
 }
 
 class _PublierEcranState extends State<PublierEcran> {
-  Ligne _ligne = lignes.first;
+  Lieu _lieuDepart = lOuagaGare;
+  Lieu? _lieuArrivee;
+  final _rdv = TextEditingController(text: lOuagaGare.rdv);
   late DateTime _date;
   TimeOfDay _heure = const TimeOfDay(hour: 7, minute: 0);
   int _places = 3;
@@ -292,43 +297,47 @@ class _PublierEcranState extends State<PublierEcran> {
     super.initState();
     final n = AppScope.read(context).maintenant;
     _date = jour(n).add(const Duration(days: 2));
-    _prix = calculerTarif(_ligne).conseille;
+    _prix = 0;
+  }
+
+  @override
+  void dispose() {
+    _rdv.dispose();
+    super.dispose();
   }
 
   DateTime get _depart => DateTime(_date.year, _date.month, _date.day, _heure.hour, _heure.minute);
 
-  Future<void> _choisirLigne() async {
-    final l = await showModalBottomSheet<Ligne>(
-      context: context,
-      builder: (c) => SafeArea(
-        child: ListView(
-          shrinkWrap: true,
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-          children: [
-            Text('Choisir le trajet', style: T.titre(22)),
-            const SizedBox(height: 12),
-            for (final l in lignes)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Choix(
-                  on: l == _ligne,
-                  onTap: () => Navigator.pop(c, l),
-                  children: [
-                    Icon(l.interVilles ? Icons.alt_route_rounded : Icons.location_city_rounded),
-                    Bloc(l.titre, '${l.interVilles ? 'Entre villes' : 'En ville'} · ${l.km} km'),
-                  ],
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-    if (l != null) {
-      setState(() {
-        _ligne = l;
-        _prix = calculerTarif(l).conseille;
-      });
-    }
+  /// Le trajet n'existe qu'une fois la destination choisie.
+  Ligne? get _ligne => _lieuArrivee == null ? null : Ligne.entre(_lieuDepart, _lieuArrivee!);
+
+  void _majTrajet({Lieu? depart, Lieu? arrivee}) {
+    setState(() {
+      if (depart != null) {
+        _lieuDepart = depart;
+        _rdv.text = depart.rdv ?? '';
+      }
+      if (arrivee != null) _lieuArrivee = arrivee;
+      final l = _ligne;
+      if (l != null) _prix = calculerTarif(l).conseille;
+    });
+  }
+
+  Future<void> _choisirDepart() async {
+    final l = await choisirLieu(context, titre: "D'où partez-vous ?", actuel: _lieuDepart, exclu: _lieuArrivee);
+    if (l != null) _majTrajet(depart: l);
+  }
+
+  Future<void> _choisirArrivee() async {
+    final l = await choisirLieu(context, titre: 'Où allez-vous ?', actuel: _lieuArrivee, exclu: _lieuDepart);
+    if (l != null) _majTrajet(arrivee: l);
+  }
+
+  void _inverser() {
+    final a = _lieuArrivee;
+    if (a == null) return;
+    _lieuArrivee = _lieuDepart;
+    _majTrajet(depart: a);
   }
 
   Future<void> _choisirDate() async {
@@ -349,10 +358,16 @@ class _PublierEcranState extends State<PublierEcran> {
 
   void _publier() {
     final s = AppScope.read(context);
+    final ligne = _ligne;
+    if (ligne == null) {
+      message(context, 'Choisissez votre destination.');
+      return;
+    }
     TrajetPublie? t;
     final ok = essayer(context, () {
       t = s.publier(
-        ligne: _ligne,
+        ligne: ligne,
+        rdv: _rdv.text,
         depart: _depart,
         places: _places,
         prix: _prix,
@@ -376,8 +391,7 @@ class _PublierEcranState extends State<PublierEcran> {
   @override
   Widget build(BuildContext context) {
     final s = AppScope.of(context);
-    final tarif = calculerTarif(_ligne);
-    final divisions = ((tarif.plafond - tarif.plancher) / tarif.pas).round();
+    final ligne = _ligne;
     return Ecran(
       children: [
         const Barre(titre: 'Publier un trajet'),
@@ -385,43 +399,93 @@ class _PublierEcranState extends State<PublierEcran> {
           gap: 14,
           children: [
             Carte(
-              onTap: _choisirLigne,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  RouteRail(
-                    gap: 12,
-                    haut: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const Doux('Départ'),
-                        Text(_ligne.depart.complet, style: T.gras),
-                        const SizedBox(height: 12),
-                        const Sep(),
-                      ],
-                    ),
-                    bas: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [const Doux('Arrivée'), Text(_ligne.arrivee.complet, style: T.gras)],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  const Sep(),
-                  const SizedBox(height: 12),
                   Row(
                     children: [
-                      const Icon(Icons.location_on_outlined, size: 20),
-                      const SizedBox(width: 8),
-                      const Bloc('Point de rendez-vous'),
-                      const Doux('Changer de trajet', gras: true),
+                      Expanded(
+                        child: RouteRail(
+                          gap: 12,
+                          haut: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              ChampLieu(
+                                label: "D'où partez-vous ?",
+                                valeur: _lieuDepart,
+                                indication: 'Choisir le départ',
+                                onTap: _choisirDepart,
+                              ),
+                              const SizedBox(height: 12),
+                              const Sep(),
+                            ],
+                          ),
+                          bas: ChampLieu(
+                            label: 'Destination',
+                            valeur: _lieuArrivee,
+                            indication: 'Où allez-vous ?',
+                            onTap: _choisirArrivee,
+                          ),
+                        ),
+                      ),
+                      if (_lieuArrivee != null)
+                        IconeBtn(
+                          icon: Icons.swap_vert_rounded,
+                          label: 'Inverser départ et destination',
+                          onTap: _inverser,
+                        ),
                     ],
                   ),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 28),
-                    child: Text(_ligne.rdv, style: T.gras),
+                  if (ligne != null) ...[
+                    const SizedBox(height: 12),
+                    const Sep(),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        const Icon(Icons.route_outlined, size: 20, color: C.doux),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Doux(
+                            '${ligne.km} km · environ ${duree(ligne.duree)} · ${ligne.interVilles ? 'entre villes' : 'en ville'}',
+                            taille: 14,
+                            gras: true,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (_lieuArrivee == null)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Doux('Trajets fréquents', taille: 14, gras: true),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final l in lignes)
+                        Puce(l.titre, on: false, onTap: () => _majTrajet(depart: l.depart, arrivee: l.arrivee)),
+                    ],
                   ),
                 ],
               ),
+            if (ligne != null && GoogleMapsRouteEmbed.disponible)
+              GoogleMapsRouteEmbed(
+                departure: '${_lieuDepart.quartier}, ${_lieuDepart.ville}, Burkina Faso',
+                destination: '${_lieuArrivee!.quartier}, ${_lieuArrivee!.ville}, Burkina Faso',
+                height: 180,
+              ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Etiq('Point de rendez-vous'),
+                const SizedBox(height: 8),
+                Champ(controller: _rdv, hint: "Ex. : devant l'entrée principale", label: 'Point de rendez-vous'),
+              ],
             ),
             Row(
               children: [
@@ -458,47 +522,28 @@ class _PublierEcranState extends State<PublierEcran> {
                 ],
               ),
             ),
-            Carte(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      const Expanded(child: Text('Prix par place', style: T.gras)),
-                      Titre(fcfa(_prix)),
-                    ],
-                  ),
-                  Slider(
-                    value: _prix.toDouble().clamp(tarif.plancher.toDouble(), tarif.plafond.toDouble()),
-                    min: tarif.plancher.toDouble(),
-                    max: tarif.plafond.toDouble(),
-                    divisions: divisions > 0 ? divisions : null,
-                    label: fcfa(_prix),
-                    onChanged: (v) => setState(() => _prix = tarif.borner(v.round())),
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Pastille('Conseillé ${fcfa(tarif.conseille)}', ton: TonPastille.vert),
-                      Pastille('Plafond ${fcfa(tarif.plafond)}', ton: TonPastille.lat),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Doux(
-                    _ligne.interVilles
-                        ? 'Le car coûte environ ${fcfa(_ligne.car)} sur cette ligne. Plancher : ${fcfa(tarif.plancher)}.'
-                        : 'En ville, le prix reste sous le coût d’un VTC. Plancher : ${fcfa(tarif.plancher)}.',
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Vous partagez ${fcfa(_places * _prix)} de frais si la voiture est pleine.',
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: C.vertF),
-                  ),
-                ],
+            if (ligne == null)
+              const Carte(
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline_rounded, size: 22),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Choisissez votre destination : le prix conseillé et le plafond se calculent selon la distance.',
+                        style: T.petit,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              _CartePrix(
+                ligne: ligne,
+                prix: _prix,
+                places: _places,
+                onPrix: (p) => setState(() => _prix = p),
               ),
-            ),
             LigneCase(
               value: _auto,
               onChanged: (v) => setState(() => _auto = v),
@@ -582,8 +627,65 @@ class _PublierEcranState extends State<PublierEcran> {
             ),
           ],
         ),
-        Pied(child: Btn('Publier le trajet', onPressed: _publier)),
+        Pied(child: Btn('Publier le trajet', onPressed: ligne == null ? null : _publier)),
       ],
+    );
+  }
+}
+
+class _CartePrix extends StatelessWidget {
+  const _CartePrix({required this.ligne, required this.prix, required this.places, required this.onPrix});
+  final Ligne ligne;
+  final int prix;
+  final int places;
+  final ValueChanged<int> onPrix;
+
+  @override
+  Widget build(BuildContext context) {
+    final tarif = calculerTarif(ligne);
+    final divisions = ((tarif.plafond - tarif.plancher) / tarif.pas).round();
+    final valeur = tarif.borner(prix);
+    final connue = lignes.any((l) => l.interVilles && l.depart.ville == ligne.depart.ville && l.arrivee.ville == ligne.arrivee.ville);
+    return Carte(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              const Expanded(child: Text('Prix par place', style: T.gras)),
+              Titre(fcfa(valeur)),
+            ],
+          ),
+          Slider(
+            value: valeur.toDouble(),
+            min: tarif.plancher.toDouble(),
+            max: tarif.plafond.toDouble(),
+            divisions: divisions > 0 ? divisions : null,
+            label: fcfa(valeur),
+            onChanged: (v) => onPrix(tarif.borner(v.round())),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Pastille('Conseillé ${fcfa(tarif.conseille)}', ton: TonPastille.vert),
+              Pastille('Plafond ${fcfa(tarif.plafond)}', ton: TonPastille.lat),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Doux(
+            ligne.interVilles
+                ? 'Le car coûte ${connue ? 'environ' : 'à peu près (estimation)'} ${fcfa(ligne.car)} sur ce trajet. Plancher : ${fcfa(tarif.plancher)}.'
+                : 'En ville, le prix reste sous le coût d’un VTC. Plancher : ${fcfa(tarif.plancher)}.',
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Vous partagez ${fcfa(places * valeur)} de frais si la voiture est pleine.',
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: C.vertF),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1162,7 +1264,7 @@ class EnRouteConducteurEcran extends StatelessWidget {
       backgroundColor: C.sable2,
       body: Stack(
         children: [
-          Positioned.fill(top: 56 + haut, bottom: 280, child: CarteDuTrajet(depart: l.depart, arrivee: l.arrivee)),
+          Positioned.fill(top: 56 + haut, bottom: 330, child: CarteDuTrajet(depart: l.depart, arrivee: l.arrivee)),
           Positioned(
             top: 16 + haut,
             left: 16,
@@ -1212,12 +1314,8 @@ class EnRouteConducteurEcran extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Doux('Prochaine dépose'),
-                            Titre(
-                              l.interVilles
-                                  ? '${l.arrivee.ville} ${l.arrivee.quartier.replaceAll('-ville', '')}'
-                                  : l.arrivee.quartier,
-                            ),
+                            Doux('Prochaine dépose · ${l.arrivee.ville}'),
+                            Titre(capitaliser(l.arrivee.quartier)),
                           ],
                         ),
                       ),
@@ -1228,6 +1326,11 @@ class EnRouteConducteurEcran extends StatelessWidget {
                     spacing: 8,
                     runSpacing: 8,
                     children: [for (final p in aBord) Pastille(p.personne.court, ton: TonPastille.vert)],
+                  ),
+                  BtnClair(
+                    'Itinéraire vers ${l.arrivee.quartier}',
+                    icon: Icons.navigation_outlined,
+                    onPressed: () => ouvrirItineraire(context, l.depart, l.arrivee),
                   ),
                   Row(
                     children: [

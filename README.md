@@ -43,6 +43,13 @@ polices Figtree et Bricolage Grotesque, en-tête « piste », billet) :
 - **Conducteur** : inscription (documents, validation, abonnement), publication
   avec prix plafonné, demandes, codes ou QR au départ, trajet en cours, gains,
   portefeuille conducteur, abonnement, annulation.
+- **Départ et destination** : le conducteur (« D'où partez-vous ? », « Où
+  allez-vous ? ») comme le passager choisissent leurs lieux dans une recherche
+  (quartiers de Ouaga, Koudougou, Bobo-Dioulasso) ou saisissent un lieu absent
+  de la liste. Distance, durée et prix plafond se calculent pour le trajet
+  choisi ; pendant le trajet, « Itinéraire » ouvre Google Maps vers la
+  destination. Les coordonnées des quartiers sont approximatives : la recherche
+  Google Places pourra les remplacer.
 - **Colis** : aperçu des écrans de la version 2.
 
 Les règles de la maquette sont réellement calculées : plafond et prix conseillé
