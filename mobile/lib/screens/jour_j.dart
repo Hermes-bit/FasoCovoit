@@ -22,7 +22,7 @@ class EnRouteEcran extends StatefulWidget {
 }
 
 class _EnRouteEcranState extends State<EnRouteEcran> {
-  bool _partage = true;
+  late bool _partage = AppScope.read(context).aUrgence;
   static const _progression = .58;
 
   void _partager(String canal) {
@@ -34,7 +34,20 @@ class _EnRouteEcranState extends State<EnRouteEcran> {
             'Véhicule ${t.conducteur.vehicule} ${t.conducteur.plaque}.',
       ),
     );
-    message(context, 'Message copié pour ${s.urgenceLien} : collez-le dans $canal.');
+    message(
+      context,
+      s.aUrgence
+          ? 'Message copié pour ${s.urgenceCourt} : collez-le dans $canal.'
+          : 'Message copié : collez-le dans $canal.',
+    );
+  }
+
+  void _basculerPartage() {
+    if (!AppScope.read(context).aUrgence) {
+      message(context, "Ajoutez un contact d'urgence dans votre profil pour partager le suivi.");
+      return;
+    }
+    setState(() => _partage = !_partage);
   }
 
   @override
@@ -169,16 +182,13 @@ class _EnRouteEcranState extends State<EnRouteEcran> {
         const SizedBox(width: 8),
         Expanded(
           child: Text(
-            _partage ? '${s.urgenceLien} suit le trajet' : 'Suivi non partagé',
+            _partage ? '${s.urgenceCourt} suit le trajet' : 'Suivi non partagé',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
           ),
         ),
-        Lien(
-          _partage ? 'Arrêter' : 'Partager',
-          onTap: () => setState(() => _partage = !_partage),
-        ),
+        Lien(_partage ? 'Arrêter' : 'Partager', onTap: _basculerPartage),
       ],
     ),
   );
@@ -273,7 +283,11 @@ class SosEcran extends StatelessWidget {
               child: Column(
                 children: espacer([
                   fait("Votre position a été envoyée à l'équipe FasoCovoit"),
-                  fait('${s.urgenceNom} (${s.urgenceLien}) a reçu un SMS'),
+                  fait(
+                    !s.aUrgence
+                        ? "Aucun contact d'urgence enregistré : ajoutez-en un dans votre profil"
+                        : '${s.urgenceNom}${s.urgenceLien.isEmpty ? '' : ' (${s.urgenceLien})'} a reçu un SMS',
+                  ),
                   fait('Le trajet et le conducteur sont enregistrés : $trajet'),
                 ], 12),
               ),

@@ -412,12 +412,15 @@ class ProfilOnglet extends StatelessWidget {
                     children: [
                       Titre(s.moi.complet),
                       const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          NoteEtoile(s.notePassager, couleur: Colors.white),
-                          Text(' · ${pluriel(s.trajetsPassager, 'trajet')}', style: T.petit),
-                        ],
-                      ),
+                      if (s.trajetsPassager == 0)
+                        Text(s.femme ? 'Nouvelle membre' : 'Nouveau membre', style: T.petit)
+                      else
+                        Row(
+                          children: [
+                            NoteEtoile(s.notePassager, couleur: Colors.white),
+                            Text(' · ${pluriel(s.trajetsPassager, 'trajet')}', style: T.petit),
+                          ],
+                        ),
                       const SizedBox(height: 4),
                       const Pastille(
                         'Numéro vérifié',
@@ -459,7 +462,9 @@ class ProfilOnglet extends StatelessWidget {
                 ligne(
                   Icons.warning_amber_rounded,
                   "Contact d'urgence",
-                  sous: s.urgenceNom.isEmpty ? 'À renseigner' : '${s.urgenceNom} · ${s.urgenceLien}',
+                  sous: !s.aUrgence
+                      ? 'À renseigner'
+                      : (s.urgenceLien.isEmpty ? s.urgenceNom : '${s.urgenceNom} · ${s.urgenceLien}'),
                   onTap: () => ouvrir(context, const UrgenceEcran()),
                 ),
                 ligne(

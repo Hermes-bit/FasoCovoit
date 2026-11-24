@@ -27,28 +27,79 @@ Future<void> toucher(WidgetTester tester, Finder f) async {
 Finder bouton(String label) => find.widgetWithText(Btn, label);
 
 void main() {
-  testWidgets('inscription : numéro, code SMS, profil, contact d’urgence', (tester) async {
+  testWidgets('inscription avec un nouveau numéro : compte vierge', (tester) async {
     final s = await lancer(tester);
     expect(find.text('On fait la route ensemble.'), findsOneWidget);
 
     await toucher(tester, find.text('Commencer'));
     expect(find.text('Quel est votre numéro ?'), findsOneWidget);
+    await tester.enterText(find.byType(TextField), '76543210');
     await toucher(tester, bouton('Recevoir le code'));
 
     expect(find.text('Entrez le code reçu'), findsOneWidget);
-    await tester.enterText(find.byType(TextField), '481927');
+    expect(find.text('SMS · FasoCovoit'), findsOneWidget);
+    await tester.enterText(find.byType(TextField), s.dernierCodeSms!);
     await toucher(tester, bouton('Valider'));
 
     expect(find.text('Faisons connaissance'), findsOneWidget);
-    await tester.enterText(find.byType(TextField).first, 'Fatou');
+    await tester.enterText(find.byType(TextField).at(0), 'Fatou');
+    await tester.enterText(find.byType(TextField).at(1), 'Sanou');
+    await toucher(tester, bouton('Continuer'));
+    expect(find.text('Faisons connaissance'), findsOneWidget, reason: 'le genre est obligatoire');
+    await toucher(tester, find.text('Femme'));
     await toucher(tester, bouton('Continuer'));
 
     expect(find.text('Qui prévenir en cas de problème ?'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).at(0), 'Ali Sanou');
+    await tester.enterText(find.byType(TextField).at(1), '+226 76 11 22 33');
     await toucher(tester, bouton('Terminer'));
 
     expect(s.connecte, isTrue);
+    expect(s.telephone, '76 54 32 10');
+    expect(s.solde, 0);
+    expect(s.reservations, isEmpty);
     expect(find.text('Ne y windiga, Fatou'), findsOneWidget);
     expect(find.text('Où allez-vous ?'), findsOneWidget);
+  });
+
+  testWidgets('compte existant 70 00 00 00 : connexion avec le code SMS', (tester) async {
+    final s = await lancer(tester);
+    await toucher(tester, find.text("J'ai déjà un compte"));
+
+    // Le numéro de démonstration est pré-rempli.
+    await toucher(tester, bouton('Recevoir le code'));
+    expect(find.textContaining('vous allez vous connecter'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), '000000');
+    await toucher(tester, bouton('Me connecter'));
+    expect(find.textContaining('Code incorrect'), findsOneWidget);
+    expect(s.connecte, isFalse);
+
+    await tester.enterText(find.byType(TextField), s.dernierCodeSms!);
+    await toucher(tester, bouton('Me connecter'));
+    expect(s.connecte, isTrue);
+    expect(s.solde, 7500);
+    expect(find.text('Ne y windiga, Awa'), findsOneWidget);
+  });
+
+  testWidgets('numéro inconnu sur « J’ai déjà un compte » : création proposée', (tester) async {
+    final s = await lancer(tester);
+    await toucher(tester, find.text("J'ai déjà un compte"));
+    await tester.enterText(find.byType(TextField), '65 43 21 09');
+    await toucher(tester, bouton('Recevoir le code'));
+
+    expect(find.text('Aucun compte avec ce numéro'), findsOneWidget);
+    await toucher(tester, bouton('Créer un compte'));
+    expect(find.text('Entrez le code reçu'), findsOneWidget);
+    expect(find.text('Valider'), findsOneWidget);
+    expect(s.compteExiste('65432109'), isFalse);
+  });
+
+  testWidgets('connexion Google annoncée mais pas encore branchée', (tester) async {
+    await lancer(tester);
+    await toucher(tester, find.text('Continuer avec Google'));
+    expect(find.text('Connexion avec Google'), findsOneWidget);
+    expect(find.textContaining('70 00 00 00'), findsOneWidget);
   });
 
   testWidgets('réserver avec le portefeuille, puis annuler selon les règles', (tester) async {

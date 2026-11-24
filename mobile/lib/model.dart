@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart';
 
@@ -571,11 +572,14 @@ const documentsConducteur = <String, String>{
 enum Mode { passager, conducteur }
 
 class AppState extends ChangeNotifier {
-  AppState({DateTime Function()? horloge}) : _horloge = horloge ?? DateTime.now {
+  AppState({DateTime Function()? horloge, math.Random? alea})
+    : _horloge = horloge ?? DateTime.now,
+      _alea = alea ?? math.Random() {
     _semer();
   }
 
   final DateTime Function() _horloge;
+  final math.Random _alea;
   DateTime get maintenant => _horloge();
   Timer? _minuterie;
 
@@ -589,7 +593,7 @@ class AppState extends ChangeNotifier {
     onglet = i;
     _changer();
   }
-  String telephone = '70 12 34 56';
+  String telephone = '70 00 00 00';
   String prenom = 'Awa';
   String nom = 'Traoré';
   bool femme = true;
@@ -600,6 +604,136 @@ class AppState extends ChangeNotifier {
   int trajetsPassager = 9;
 
   Personne get moi => Personne(prenom, nom, femme: femme);
+  bool get aUrgence => urgenceNom.trim().isNotEmpty;
+
+  /// « Maman », sinon le prénom du contact d'urgence.
+  String get urgenceCourt =>
+      urgenceLien.isNotEmpty ? urgenceLien : (aUrgence ? urgenceNom.trim().split(' ').first : '');
+
+  // --------------------------------------------------- comptes et code SMS
+
+  /// Compte de démonstration déjà existant (historique, portefeuille…).
+  static const numeroDemo = '70000000';
+  static const dureeCode = Duration(minutes: 5);
+  static const essaisMax = 5;
+
+  /// Numéros qui ont un compte. Démo : en mémoire, pour cette session.
+  final Set<String> _comptes = {numeroDemo};
+  String _compteCharge = numeroDemo;
+  String? _codeSms;
+  String? _telSms;
+  DateTime? _expireSms;
+  int _essaisSms = 0;
+
+  static String chiffres(String tel) => tel.replaceAll(RegExp(r'\D'), '');
+  static String formaterTel(String c) =>
+      [for (var i = 0; i + 2 <= c.length; i += 2) c.substring(i, i + 2)].join(' ');
+
+  bool compteExiste(String tel) => _comptes.contains(chiffres(tel));
+
+  /// Dernier code « envoyé » par SMS. Tant qu'aucun fournisseur SMS n'est
+  /// branché, l'application l'affiche comme un SMS reçu.
+  String? get dernierCodeSms => _codeSms;
+  DateTime? get expirationCode => _expireSms;
+
+  String envoyerCode(String tel) {
+    final c = chiffres(tel);
+    if (c.length != 8) throw ErreurMetier('Saisissez les 8 chiffres de votre numéro.');
+    _telSms = c;
+    _codeSms = (100000 + _alea.nextInt(900000)).toString();
+    _expireSms = maintenant.add(dureeCode);
+    _essaisSms = 0;
+    _changer();
+    return _codeSms!;
+  }
+
+  /// Vérifie le code reçu. Retourne vrai si le numéro avait déjà un compte :
+  /// la session s'ouvre alors directement. Sinon, un compte vierge est créé
+  /// et l'inscription continue (profil, contact d'urgence).
+  bool verifierCode(String code) {
+    final tel = _telSms;
+    if (_codeSms == null || tel == null) throw ErreurMetier("Demandez d'abord un code.");
+    if (maintenant.isAfter(_expireSms!)) {
+      throw ErreurMetier('Ce code a expiré : demandez-en un nouveau.');
+    }
+    if (_essaisSms >= essaisMax) {
+      throw ErreurMetier("Trop d'essais : demandez un nouveau code.");
+    }
+    if (code.trim() != _codeSms) {
+      _essaisSms++;
+      final reste = essaisMax - _essaisSms;
+      throw ErreurMetier(
+        reste > 0
+            ? 'Code incorrect. Encore ${pluriel(reste, 'essai')}.'
+            : "Trop d'essais : demandez un nouveau code.",
+      );
+    }
+    _codeSms = null;
+    _telSms = null;
+    final existe = _comptes.contains(tel);
+    if (existe) {
+      if (tel != _compteCharge) _reinitialiser(tel);
+      connecte = true;
+      mode = Mode.passager;
+      onglet = 0;
+    } else {
+      _comptes.add(tel);
+      _reinitialiser(tel);
+    }
+    _changer();
+    return existe;
+  }
+
+  /// Charge les données du compte : historique complet pour le compte de
+  /// démonstration, compte vierge pour un nouveau numéro.
+  void _reinitialiser(String tel) {
+    trajets.clear();
+    reservations.clear();
+    operations.clear();
+    reclamations.clear();
+    conversations.clear();
+    notifications.clear();
+    documentsEnvoyes.clear();
+    trajetsPublies.clear();
+    gains.clear();
+    operationsConducteur.clear();
+    etapeConducteur = EtapeConducteur.aucune;
+    abonnement = null;
+    gainsDisponibles = 0;
+    annulationsConducteur = 0;
+    suspenduJusquau = null;
+    trajetsConducteur = 0;
+    _exempleAjoute = false;
+    _compteur = 0;
+    _nResa = 0;
+    mode = Mode.passager;
+    onglet = 0;
+    _compteCharge = tel;
+    telephone = formaterTel(tel);
+    final demo = tel == numeroDemo;
+    if (demo) {
+      prenom = 'Awa';
+      nom = 'Traoré';
+      femme = true;
+      urgenceNom = 'Mariam Traoré';
+      urgenceTel = '+226 76 45 21 09';
+      urgenceLien = 'Maman';
+      notePassager = 4.7;
+      trajetsPassager = 9;
+      parrainage = (invites: 3, voyage: 1, gagne: 500);
+    } else {
+      prenom = '';
+      nom = '';
+      femme = false;
+      urgenceNom = '';
+      urgenceTel = '';
+      urgenceLien = '';
+      notePassager = 0;
+      trajetsPassager = 0;
+      parrainage = (invites: 0, voyage: 0, gagne: 0);
+    }
+    _semer(historique: demo);
+  }
   String get codeParrainage {
     final base = prenom
         .toUpperCase()
@@ -624,7 +758,7 @@ class AppState extends ChangeNotifier {
   late DateTime bonusExpire;
   static const soldeMax = 100000;
   static const partBonus = 50; // % d'une place payable en bonus
-  final parrainage = (invites: 3, voyage: 1, gagne: 500);
+  ({int invites, int voyage, int gagne}) parrainage = (invites: 3, voyage: 1, gagne: 500);
 
   // Conducteur
   EtapeConducteur etapeConducteur = EtapeConducteur.aucune;
@@ -701,29 +835,12 @@ class AppState extends ChangeNotifier {
     _changer();
   }
 
-  /// Démo : la suppression remet l'application dans son état de départ.
+  /// Supprime le compte connecté. Le compte de démonstration, lui, est
+  /// simplement remis dans son état de départ.
   void supprimerCompte() {
-    trajets.clear();
-    reservations.clear();
-    operations.clear();
-    reclamations.clear();
-    conversations.clear();
-    notifications.clear();
-    documentsEnvoyes.clear();
-    trajetsPublies.clear();
-    gains.clear();
-    operationsConducteur.clear();
-    etapeConducteur = EtapeConducteur.aucune;
-    abonnement = null;
-    gainsDisponibles = 0;
-    annulationsConducteur = 0;
-    suspenduJusquau = null;
-    trajetsConducteur = 0;
-    _exempleAjoute = false;
-    _compteur = 0;
-    _semer();
+    if (_compteCharge != numeroDemo) _comptes.remove(_compteCharge);
+    _reinitialiser(numeroDemo);
     connecte = false;
-    mode = Mode.passager;
     _changer();
   }
 
@@ -1378,7 +1495,7 @@ class AppState extends ChangeNotifier {
 
   // ----------------------------------------------------------- données démo
 
-  void _semer() {
+  void _semer({bool historique = true}) {
     final n = maintenant;
     final demain = jour(n).add(const Duration(days: 1));
     DateTime a(DateTime j, int h, [int m = 0]) => DateTime(j.year, j.month, j.day, h, m);
@@ -1509,6 +1626,24 @@ class AppState extends ChangeNotifier {
         interVilles: false,
       ),
     ]);
+
+    if (!historique) {
+      // Nouveau compte : aucun historique, portefeuille vide.
+      depose = 0;
+      bonus = 0;
+      bonusExpire = jour(n);
+      conversations.add(
+        Conversation(
+          id: 'equipe',
+          avec: const Personne('Équipe', 'FasoCovoit'),
+          contexte: 'Aide',
+          equipe: true,
+          nonLus: 1,
+          messages: [Message('Bienvenue sur FasoCovoit ! Une question ? Écrivez-nous ici.', n)],
+        ),
+      );
+      return;
+    }
 
     // Historique passager
     final regulier = Trajet(

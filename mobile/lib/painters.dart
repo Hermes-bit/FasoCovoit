@@ -122,30 +122,35 @@ class _PointillesPainter extends CustomPainter {
 class PaysagePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final s = size.width / 390;
-    canvas.save();
-    canvas.translate(0, size.height - 330 * s);
-    canvas.scale(s);
-    canvas.drawCircle(const Offset(300, 96), 44, Paint()..color = C.etoile);
+    // Les collines s'étirent sur toute la largeur ; le reste de la scène garde
+    // ses proportions et reste centré (téléphone comme grand écran).
+    final sx = size.width / 390;
+    final s = math.min(sx, size.height * .6 / 330);
+    double y(double v) => size.height - (330 - v) * s;
+    double x(double v) => v * sx;
     canvas.drawPath(
       Path()
-        ..moveTo(0, 170)
-        ..quadraticBezierTo(120, 150, 200, 165)
-        ..quadraticBezierTo(280, 180, 390, 150)
-        ..lineTo(390, 330)
-        ..lineTo(0, 330)
+        ..moveTo(x(0), y(170))
+        ..quadraticBezierTo(x(120), y(150), x(200), y(165))
+        ..quadraticBezierTo(x(280), y(180), x(390), y(150))
+        ..lineTo(size.width, size.height)
+        ..lineTo(0, size.height)
         ..close(),
       Paint()..color = const Color(0xFF9C4422),
     );
     canvas.drawPath(
       Path()
-        ..moveTo(0, 215)
-        ..quadraticBezierTo(150, 195, 390, 210)
-        ..lineTo(390, 330)
-        ..lineTo(0, 330)
+        ..moveTo(x(0), y(215))
+        ..quadraticBezierTo(x(150), y(195), x(390), y(210))
+        ..lineTo(size.width, size.height)
+        ..lineTo(0, size.height)
         ..close(),
       Paint()..color = C.lateriteF,
     );
+    canvas.save();
+    canvas.translate(size.width / 2 - 195 * s, size.height - 330 * s);
+    canvas.scale(s);
+    canvas.drawCircle(const Offset(300, 96), 44, Paint()..color = C.etoile);
     canvas.drawPath(
       Path()
         ..moveTo(150, 330)

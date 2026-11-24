@@ -22,6 +22,63 @@ void main() {
     });
   });
 
+  group('connexion par code SMS', () {
+    test('70 00 00 00 est le compte existant de démonstration', () {
+      final s = etat();
+      expect(s.compteExiste('70 00 00 00'), isTrue);
+      expect(s.compteExiste('76543210'), isFalse);
+      expect(() => s.envoyerCode('70 00'), throwsA(isA<ErreurMetier>()));
+    });
+
+    test('un code faux est refusé, le bon code ouvre la session', () {
+      final s = etat();
+      final code = s.envoyerCode('70 00 00 00');
+      expect(code, hasLength(6));
+      expect(() => s.verifierCode('000000'), throwsA(isA<ErreurMetier>()));
+      expect(s.connecte, isFalse);
+      expect(s.verifierCode(code), isTrue);
+      expect(s.connecte, isTrue);
+      expect(s.prenom, 'Awa');
+      expect(s.dernierCodeSms, isNull);
+    });
+
+    test('après 5 essais faux, même le bon code est refusé', () {
+      final s = etat();
+      final code = s.envoyerCode('70000000');
+      for (var i = 0; i < AppState.essaisMax; i++) {
+        expect(() => s.verifierCode('000000'), throwsA(isA<ErreurMetier>()));
+      }
+      expect(() => s.verifierCode(code), throwsA(isA<ErreurMetier>()));
+      expect(s.verifierCode(s.envoyerCode('70000000')), isTrue);
+    });
+
+    test('un code expire après 5 minutes', () {
+      var heureCourante = maintenant;
+      final s = AppState(horloge: () => heureCourante);
+      final code = s.envoyerCode('70000000');
+      heureCourante = maintenant.add(const Duration(minutes: 6));
+      expect(() => s.verifierCode(code), throwsA(isA<ErreurMetier>()));
+    });
+
+    test('nouveau numéro : compte vierge, puis retour au compte de démonstration', () {
+      final s = etat();
+      expect(s.verifierCode(s.envoyerCode('76543210')), isFalse);
+      expect(s.connecte, isFalse, reason: 'l’inscription doit encore être terminée');
+      expect(s.compteExiste('76543210'), isTrue);
+      expect(s.telephone, '76 54 32 10');
+      expect(s.prenom, isEmpty);
+      expect(s.solde, 0);
+      expect(s.reservations, isEmpty);
+      expect(s.trajets, isNotEmpty, reason: 'les trajets des conducteurs restent visibles');
+      s.connecter();
+      s.deconnecter();
+
+      expect(s.verifierCode(s.envoyerCode('70000000')), isTrue);
+      expect(s.prenom, 'Awa');
+      expect(s.solde, 7500);
+    });
+  });
+
   group('tarifs (R30 à R41)', () {
     test('Ouaga → Koudougou : plancher, conseillé et plafond de la maquette', () {
       final t = calculerTarif(ligneParId('ouaga-koudougou'));

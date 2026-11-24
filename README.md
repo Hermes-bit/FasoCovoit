@@ -51,10 +51,28 @@ plafond 2 500 F), bonus limité à la moitié du prix, remboursements à 100 %,
 50 % ou 0 % selon le délai, expiration d'une demande après 30 minutes,
 suspension du conducteur après 3 annulations en 30 jours.
 
-### Raccourcis de démonstration
+### Connexion
 
-- « Commencer » ouvre l'inscription ; « J'ai déjà un compte » mène directement
-  à l'accueil après le code SMS. Tout code SMS à 6 chiffres est accepté.
+- **Compte existant de démonstration : 70 00 00 00** (Awa, avec son historique,
+  son portefeuille et ses trajets). « J'ai déjà un compte » le propose déjà.
+- Tout autre numéro crée un **nouveau compte vierge** (portefeuille à 0 F) après
+  le profil et le contact d'urgence. Un numéro inconnu saisi dans « J'ai déjà un
+  compte » propose de créer le compte.
+- Le code à 6 chiffres expire après 5 minutes et 5 essais. Aucun fournisseur SMS
+  n'est encore branché : l'application affiche le SMS reçu (simulation) et il
+  faut recopier le code.
+- « Continuer avec Google » est affiché mais pas encore actif. Il faudra des
+  vrais comptes côté serveur (par exemple Supabase Auth ou Firebase Auth avec le
+  fournisseur Google) et un identifiant client OAuth Google.
+
+### Plein écran
+
+L'application occupe toute la fenêtre, sur téléphone comme sur ordinateur. Sur
+téléphone, l'ajouter à l'écran d'accueil (menu du navigateur → « Ajouter à
+l'écran d'accueil » ou « Installer l'application ») l'ouvre en plein écran, sans
+la barre du navigateur.
+
+### Raccourcis de démonstration
 - « Simuler l'acceptation du conducteur » et « Simuler la validation par
   l'équipe » remplacent les actions qui seront faites par d'autres personnes.
 - Au premier trajet publié, deux demandes fictives arrivent. Les codes de départ

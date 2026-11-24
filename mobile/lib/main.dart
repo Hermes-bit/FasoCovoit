@@ -27,16 +27,6 @@ class FasoCovoitApp extends StatelessWidget {
       supportedLocales: const [Locale('fr')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
       theme: construireTheme(),
-      // Sur grand écran (Web), l'application garde une largeur de téléphone.
-      builder: (context, child) => ColoredBox(
-        color: const Color(0xFFE4D2B6),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 480),
-            child: ClipRect(child: child),
-          ),
-        ),
-      ),
       home: const Racine(),
     ),
   );
