@@ -131,6 +131,14 @@ void main() {
     expect(find.text('Ousmane B.'), findsOneWidget);
   });
 
+  testWidgets('passager : les offres se croisent avec son adresse, sinon il publie sa demande', (tester) async {
+    final s = await lancer(tester, connecte: true);
+    await toucher(tester, bouton('Rechercher'));
+    expect(find.textContaining('de votre adresse'), findsWidgets);
+    await toucher(tester, find.widgetWithText(BtnClair, 'Publier ma demande'));
+    expect(s.demandesTrajet.where((d) => d.moi), hasLength(1));
+  });
+
   testWidgets('connexion Google annoncée mais pas encore branchée', (tester) async {
     await lancer(tester);
     await toucher(tester, find.text('Continuer avec Google'));

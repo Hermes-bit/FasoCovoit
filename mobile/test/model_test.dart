@@ -126,7 +126,20 @@ void main() {
       expect(s.rechercher(depart: lOuagaGare, arrivee: lBoboCentre), isEmpty);
       s.majProfil(femme: true);
       expect(s.rechercher(depart: lDassasgho, arrivee: lOuaga2000), hasLength(2));
-      expect(s.rechercher(depart: lCissin, arrivee: lKoudS7), hasLength(3));
+      // Le trajet d'Aminata part de Tampouy, à plus de 8 km de Cissin.
+      expect(s.rechercher(depart: lCissin, arrivee: lKoudS7), hasLength(2));
+    });
+
+    test('croisement : montée sur la route, dépose près de l’adresse, dans le bon sens', () {
+      final c = correspondance(lOuagaGare, lKoudCentre, lCissin, lKoudS7);
+      expect(c, isNotNull);
+      expect(c!.monte, lessThan(3));
+      expect(c.descend, lessThan(3));
+      expect(correspondance(lOuagaGare, lKoudCentre, lKoudCentre, lOuagaGare), isNull, reason: 'mauvais sens');
+      expect(correspondance(lDassasgho, lOuaga2000, lZogona, lPatteOie), isNotNull);
+      expect(correspondance(lDassasgho, lOuaga2000, lTampouy, lZogona), isNull, reason: 'trop loin');
+      expect(ecartTexte(0.1), 'sur la route');
+      expect(ecartTexte(2.4), 'à 2,4 km');
     });
 
     test('photos : profil et documents gardés en mémoire', () {
@@ -325,6 +338,31 @@ void main() {
         ),
         throwsA(isA<ErreurMetier>()),
       );
+    });
+
+    test('demandes de passagers : le conducteur propose une place sur son trajet', () {
+      final s = conducteurActif();
+      // Fatou cherche Patte d'Oie → Koudougou Secteur 7, demain 7 h.
+      final fatou = s.demandesPourConducteur.firstWhere((e) => e.$1.passager.prenom == 'Fatou');
+      expect(fatou.$2, isNull, reason: 'aucun trajet publié');
+      final t = s.publier(
+        ligne: Ligne.entre(lOuagaGare, lKoudCentre),
+        depart: DateTime(2026, 11, 25, 7),
+        places: 3,
+        prix: 2000,
+      );
+      final (d, trajet) = s.demandesPourConducteur.firstWhere((e) => e.$1.passager.prenom == 'Fatou');
+      expect(trajet, t);
+      s.proposerPlace(d, t);
+      final p = t.confirmes.firstWhere((p) => p.personne.prenom == 'Fatou');
+      expect(p.montee, lPatteOie);
+      expect(p.descente, lKoudS7);
+      expect(s.demandesTrajet.contains(d), isFalse);
+
+      // Le passager connecté publie aussi sa propre demande.
+      final mienne = s.publierDemande(depart: lTampouy, arrivee: lZogona, quand: maintenant);
+      expect(mienne.moi, isTrue);
+      expect(s.demandesPourConducteur.any((e) => e.$1 == mienne), isFalse);
     });
 
     test('publier refuse un prix au-dessus du plafond', () {

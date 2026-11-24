@@ -104,7 +104,7 @@ class _ChoisirLieuEcranState extends State<ChoisirLieuEcran> {
             controller: _recherche,
             autofocus: true,
             actif: true,
-            hint: 'Quartier, ville ou lieu connu',
+            hint: 'Adresse, quartier ou lieu connu',
             label: 'Rechercher un lieu',
           ),
         ),

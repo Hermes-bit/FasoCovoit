@@ -129,6 +129,10 @@ class ConducteurAccueilOnglet extends StatelessWidget {
               const Doux('À venir', taille: 14, gras: true),
               for (final t in actifs) _CarteTrajetPublie(t),
             ],
+            if (s.demandesPourConducteur.isNotEmpty) ...[
+              const Doux('Passagers qui cherchent un trajet', taille: 14, gras: true),
+              for (final (d, t) in s.demandesPourConducteur) _CarteDemandePassager(d, t),
+            ],
             Carte(
               pointillee: true,
               bord: C.laterite,
@@ -258,6 +262,99 @@ class _CarteTrajetPublie extends StatelessWidget {
   }
 }
 
+/// Un passager cherche un trajet : le conducteur propose une place sur un
+/// trajet publié qui passe par là, ou publie ce trajet.
+class _CarteDemandePassager extends StatelessWidget {
+  const _CarteDemandePassager(this.d, this.t);
+  final DemandeTrajet d;
+  final TrajetPublie? t;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppScope.of(context);
+    final trajet = t;
+    final c = trajet == null ? null : correspondance(trajet.ligne.depart, trajet.ligne.arrivee, d.depart, d.arrivee);
+    String lieu(Lieu l) => '${capitaliser(l.quartier)} (${villeCourte(l.ville)})';
+    return Carte(
+      bord: trajet == null ? C.trait : C.vert,
+      epaisseur: trajet == null ? 1.5 : 2.5,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Ava(d.passager.initiales, ton: d.passager.ton),
+              const SizedBox(width: 12),
+              Bloc(
+                d.passager.court,
+                '${jourRelatif(d.quand, s.maintenant)} ${heureCourte(d.quand)} · ${pluriel(d.places, 'place')}',
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text('${lieu(d.depart)} → ${lieu(d.arrivee)}', style: T.gras),
+          const SizedBox(height: 8),
+          if (trajet != null && c != null) ...[
+            Text(
+              'Sur votre trajet de ${heure(trajet.depart)} : montée ${ecartTexte(c.monte)}, dépose ${ecartTexte(c.descend)}.',
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: C.vertF),
+            ),
+            const SizedBox(height: 10),
+            Btn(
+              'Proposer une place',
+              hauteur: 50,
+              onPressed: () {
+                if (essayer(context, () => s.proposerPlace(d, trajet))) {
+                  message(context, '${d.passager.court} a accepté votre proposition (démonstration).');
+                }
+              },
+            ),
+          ] else ...[
+            const Doux('Aucun de vos trajets publiés ne passe par là ce jour-là.'),
+            const SizedBox(height: 10),
+            BtnClair(
+              'Publier ce trajet',
+              icon: Icons.add_rounded,
+              onPressed: () => ouvrir(context, PublierEcran(depart: d.depart, arrivee: d.arrivee, quand: d.quand)),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Où le passager monte et descend, par rapport à la route du conducteur.
+class _AdressesPassager extends StatelessWidget {
+  const _AdressesPassager(this.t, this.p);
+  final TrajetPublie t;
+  final Passager p;
+
+  @override
+  Widget build(BuildContext context) {
+    final m = p.montee, d = p.descente;
+    if (m == null || d == null) return const SizedBox.shrink();
+    final c = correspondance(t.ligne.depart, t.ligne.arrivee, m, d);
+    Widget ligne(IconData i, Color couleur, String texte) => Row(
+      children: [
+        Icon(i, size: 16, color: couleur),
+        const SizedBox(width: 6),
+        Expanded(child: Text(texte, style: T.petit)),
+      ],
+    );
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Column(
+        children: [
+          ligne(Icons.trip_origin_rounded, C.vert, 'Monte : ${m.complet}${c == null ? '' : ' · ${ecartTexte(c.monte)}'}'),
+          const SizedBox(height: 4),
+          ligne(Icons.flag_outlined, C.laterite, 'Descend : ${d.complet}${c == null ? '' : ' · ${ecartTexte(c.descend)}'}'),
+        ],
+      ),
+    );
+  }
+}
+
 const _lettresJours = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 const _nomsJours = ['lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.'];
 
@@ -272,7 +369,12 @@ String _jours(Set<int> j) {
 // ---------------------------------------------------------------------------
 
 class PublierEcran extends StatefulWidget {
-  const PublierEcran({super.key});
+  const PublierEcran({super.key, this.depart, this.arrivee, this.quand});
+
+  /// Pré-remplissage, par exemple depuis la demande d'un passager.
+  final Lieu? depart;
+  final Lieu? arrivee;
+  final DateTime? quand;
 
   @override
   State<PublierEcran> createState() => _PublierEcranState();
@@ -299,6 +401,18 @@ class _PublierEcranState extends State<PublierEcran> {
     final n = AppScope.read(context).maintenant;
     _date = jour(n).add(const Duration(days: 2));
     _prix = 0;
+    final q = widget.quand;
+    if (q != null) {
+      _date = jour(q);
+      _heure = TimeOfDay(hour: q.hour, minute: q.minute);
+    }
+    if (widget.depart != null) {
+      _lieuDepart = widget.depart!;
+      _rdv.text = widget.depart!.rdv ?? '';
+    }
+    _lieuArrivee = widget.arrivee;
+    final l = _ligne;
+    if (l != null) _prix = calculerTarif(l).conseille;
   }
 
   @override
@@ -750,7 +864,8 @@ class DemandesEcran extends StatelessWidget {
                       Ava(p.personne.initiales, ton: p.personne.ton),
                       Bloc(
                         p.personne.court,
-                        '${pluriel(p.places, 'place')} · ${p.paiement == Paiement.especes ? 'espèces au départ' : 'payé par ${p.paiement.label}'}',
+                        '${pluriel(p.places, 'place')} · ${p.paiement == Paiement.especes ? 'espèces au départ' : 'payé par ${p.paiement.label}'}'
+                        '${p.montee == null || p.descente == null ? '' : '\nMonte : ${capitaliser(p.montee!.quartier)} · descend : ${capitaliser(p.descente!.quartier)}'}',
                       ),
                       IconeBtn(
                         icon: Icons.chat_bubble_outline_rounded,
@@ -831,6 +946,7 @@ class _CarteDemande extends StatelessWidget {
               ),
             ],
           ),
+          _AdressesPassager(t, p),
           const SizedBox(height: 12),
           Row(
             children: [

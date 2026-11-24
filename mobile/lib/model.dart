@@ -129,6 +129,70 @@ double distanceKm(Lieu a, Lieu b) {
   return 2 * 6371 * math.asin(math.sqrt(h));
 }
 
+/// Position de [p] le long du segment [a]→[b] : `t` (0 = départ, 1 = arrivée)
+/// et distance en km au segment (projection plane, suffisante à cette échelle).
+({double t, double km}) projeter(Lieu p, Lieu a, Lieu b) {
+  final (la, loa) = a.position;
+  final (lb, lob) = b.position;
+  final (lp, lop) = p.position;
+  final k = math.cos(la * math.pi / 180);
+  double x(double lo) => lo * 111.32 * k;
+  double y(double lat) => lat * 110.57;
+  final ax = x(loa), ay = y(la), bx = x(lob), by = y(lb), px = x(lop), py = y(lp);
+  final dx = bx - ax, dy = by - ay;
+  final l2 = dx * dx + dy * dy;
+  final t = l2 == 0 ? 0.0 : (((px - ax) * dx + (py - ay) * dy) / l2).clamp(0.0, 1.0);
+  final cx = ax + t * dx, cy = ay + t * dy;
+  return (t: t, km: math.sqrt((px - cx) * (px - cx) + (py - cy) * (py - cy)));
+}
+
+/// Croisement entre l'adresse d'un passager et le trajet d'un conducteur :
+/// distance de montée (au départ ou le long de la route) et de dépose.
+/// Null si c'est trop loin ou dans le mauvais sens.
+({double monte, double descend})? correspondance(
+  Lieu departTrajet,
+  Lieu arriveeTrajet,
+  Lieu depart,
+  Lieu arrivee,
+) {
+  final inter = departTrajet.ville != arriveeTrajet.ville;
+  final rayon = inter ? AppState.rayonInter : AppState.rayonVille;
+  final m = projeter(depart, departTrajet, arriveeTrajet);
+  final d = projeter(arrivee, departTrajet, arriveeTrajet);
+  final monte = math.min(distanceKm(depart, departTrajet), m.km);
+  final descend = math.min(distanceKm(arrivee, arriveeTrajet), d.km);
+  if (monte > rayon || descend > rayon) return null;
+  if (m.t > d.t + 0.05) return null; // il faut descendre après être monté
+  return (monte: monte, descend: descend);
+}
+
+/// « sur la route », « à 800 m », « à 2,4 km ».
+String ecartTexte(double km) {
+  if (km < 0.3) return 'sur la route';
+  if (km < 1) return 'à ${(km * 1000 / 100).round() * 100} m';
+  return 'à ${km.toStringAsFixed(1).replaceAll('.', ',')} km';
+}
+
+/// Un passager qui cherche un trajet : les conducteurs peuvent lui proposer une place.
+class DemandeTrajet {
+  DemandeTrajet({
+    required this.id,
+    required this.passager,
+    required this.depart,
+    required this.arrivee,
+    required this.quand,
+    this.places = 1,
+    this.moi = false,
+  });
+  final String id;
+  final Personne passager;
+  final Lieu depart;
+  final Lieu arrivee;
+  final DateTime quand;
+  final int places;
+  final bool moi;
+}
+
 /// Minuscules sans accents, pour la recherche de lieux.
 String normaliser(String s) {
   const avec = 'àâäáãéèêëíìîïóòôöõúùûüçñ';
@@ -412,9 +476,15 @@ class Reservation {
     this.bonusUtilise = 0,
     this.statut = StatutResa.enAttente,
     this.notee = false,
+    this.montee,
+    this.descente,
   });
   final String ref;
   final Trajet trajet;
+
+  /// Adresses du passager (montée et dépose), si différentes du trajet.
+  final Lieu? montee;
+  final Lieu? descente;
   final int places;
   final Paiement paiement;
   final int montant;
@@ -594,8 +664,14 @@ class Passager {
     this.statut = StatutDemande.attente,
     this.note = 4.7,
     this.trajets = 9,
+    this.montee,
+    this.descente,
   });
   final Personne personne;
+
+  /// Où le passager monte et descend : le conducteur choisit en fonction.
+  final Lieu? montee;
+  final Lieu? descente;
   final int places;
   final Paiement paiement;
   final String code;
@@ -1001,8 +1077,84 @@ class AppState extends ChangeNotifier {
 
   // --------------------------------------------------------------- recherche
 
-  /// Rayon (km) autour du départ et de l'arrivée pour un trajet en ville.
+  /// Écart maximal (km) entre l'adresse du passager et le trajet du conducteur.
   static const rayonVille = 3.0;
+  static const rayonInter = 8.0;
+
+  /// Passagers qui cherchent un trajet (les leurs et ceux des autres).
+  final List<DemandeTrajet> demandesTrajet = [];
+
+  /// Croisement entre une offre et l'adresse du passager.
+  ({double monte, double descend})? correspondancePour(Trajet t, Lieu depart, Lieu arrivee) =>
+      correspondance(t.depart, t.arrivee, depart, arrivee);
+
+  DemandeTrajet publierDemande({
+    required Lieu depart,
+    required Lieu arrivee,
+    required DateTime quand,
+    int places = 1,
+  }) {
+    if (depart == arrivee) throw ErreurMetier('Le départ et la destination doivent être différents.');
+    final d = DemandeTrajet(
+      id: 'D${demandesTrajet.length + 1}',
+      passager: moi,
+      depart: depart,
+      arrivee: arrivee,
+      quand: quand,
+      places: places,
+      moi: true,
+    );
+    demandesTrajet.add(d);
+    _changer();
+    return d;
+  }
+
+  void retirerDemande(DemandeTrajet d) {
+    demandesTrajet.remove(d);
+    _changer();
+  }
+
+  /// Pour le conducteur : demandes des autres passagers, avec le trajet
+  /// publié qui leur correspond le mieux (ou null s'il n'y en a pas).
+  List<(DemandeTrajet, TrajetPublie?)> get demandesPourConducteur {
+    final resultat = <(DemandeTrajet, TrajetPublie?)>[];
+    for (final d in demandesTrajet.where((d) => !d.moi)) {
+      TrajetPublie? meilleur;
+      var score = double.infinity;
+      for (final t in trajetsPublies.where((t) => t.statut == StatutPublie.publie)) {
+        if (t.places - t.reservees < d.places) continue;
+        if (t.entreFemmes && !d.passager.femme) continue;
+        if (ecartJours(t.depart, d.quand) != 0) continue;
+        final c = correspondance(t.ligne.depart, t.ligne.arrivee, d.depart, d.arrivee);
+        if (c != null && c.monte + c.descend < score) {
+          score = c.monte + c.descend;
+          meilleur = t;
+        }
+      }
+      resultat.add((d, meilleur));
+    }
+    return resultat;
+  }
+
+  /// Le conducteur propose une place : démo, le passager accepte aussitôt.
+  void proposerPlace(DemandeTrajet d, TrajetPublie t) {
+    if (t.places - t.reservees < d.places) throw ErreurMetier('Plus assez de places libres sur ce trajet.');
+    t.passagers.add(
+      Passager(
+        personne: d.passager,
+        places: d.places,
+        paiement: Paiement.especes,
+        code: ((1000 + demandesTrajet.length * 7919 + t.passagers.length * 613) % 9000 + 1000).toString(),
+        recueLe: maintenant,
+        prixPlace: t.prix,
+        statut: StatutDemande.acceptee,
+        montee: d.depart,
+        descente: d.arrivee,
+      ),
+    );
+    demandesTrajet.remove(d);
+    _changer();
+  }
 
   /// Trajets disponibles. Avec [depart] et [arrivee] : entre villes, mêmes
   /// villes ; en ville, départ et arrivée à moins de [rayonVille] km.
@@ -1017,14 +1169,10 @@ class AppState extends ChangeNotifier {
     final inter = depart != null && arrivee != null ? depart.ville != arrivee.ville : (interVilles ?? true);
     return trajets.where((t) {
       if (t.interVilles != inter) return false;
-      if (depart != null && arrivee != null) {
-        if (inter && (t.depart.ville != depart.ville || t.arrivee.ville != arrivee.ville)) return false;
-        if (!inter &&
-            (t.depart.ville != depart.ville ||
-                distanceKm(t.depart, depart) > rayonVille ||
-                distanceKm(t.arrivee, arrivee) > rayonVille)) {
-          return false;
-        }
+      // Croisement avec l'adresse du passager : montée au départ ou sur la
+      // route, dépose près de son adresse, dans le bon sens.
+      if (depart != null && arrivee != null && correspondancePour(t, depart, arrivee) == null) {
+        return false;
       }
       if (!t.heureDepart.isAfter(maintenant)) return false;
       if (t.placesLibres < places) return false;
@@ -1048,6 +1196,8 @@ class AppState extends ChangeNotifier {
     required int places,
     required Paiement paiement,
     bool utiliserBonus = true,
+    Lieu? montee,
+    Lieu? descente,
   }) {
     if (trajet.placesLibres <= 0) throw ErreurMetier('Trajet complet.'); // T5
     if (places < 1 || places > trajet.placesLibres) {
@@ -1077,6 +1227,8 @@ class AppState extends ChangeNotifier {
       bonusUtilise: bonusPris,
       code: _code(),
       creeLe: maintenant,
+      montee: montee,
+      descente: descente,
     );
     if (paiement == Paiement.portefeuille) {
       operations.insert(
@@ -1460,6 +1612,13 @@ class AppState extends ChangeNotifier {
   }
 
   void _ajouterDemandesExemple(TrajetPublie t) {
+    // Lieu connu le plus proche, dans la même ville, autre que [l].
+    Lieu voisin(Lieu l) {
+      final autres = lieux.where((x) => x.ville == l.ville && x != l).toList()
+        ..sort((a, b) => distanceKm(a, l).compareTo(distanceKm(b, l)));
+      return autres.isEmpty ? l : autres.first;
+    }
+
     final demandes = <Passager>[
       if (t.especes)
         Passager(
@@ -1472,6 +1631,8 @@ class AppState extends ChangeNotifier {
           statut: StatutDemande.acceptee,
           note: 4.8,
           trajets: 14,
+          montee: t.ligne.depart,
+          descente: t.ligne.arrivee,
         ),
       if (t.mobile && t.places > 1 || t.mobile && !t.especes)
         Passager(
@@ -1482,6 +1643,8 @@ class AppState extends ChangeNotifier {
           recueLe: maintenant,
           prixPlace: t.prix,
           statut: t.accepteAuto ? StatutDemande.acceptee : StatutDemande.attente,
+          montee: voisin(t.ligne.depart),
+          descente: voisin(t.ligne.arrivee),
         ),
     ];
     t.passagers.addAll(demandes);
@@ -1785,6 +1948,34 @@ class AppState extends ChangeNotifier {
         interVilles: false,
       ),
     ]);
+
+    // D'autres passagers cherchent un trajet : les conducteurs le voient.
+    demandesTrajet
+      ..clear()
+      ..addAll([
+        DemandeTrajet(
+          id: 'D-ex1',
+          passager: const Personne('Fatou', 'Sanou', femme: true),
+          depart: lPatteOie,
+          arrivee: lKoudS7,
+          quand: a(demain, 7),
+        ),
+        DemandeTrajet(
+          id: 'D-ex2',
+          passager: const Personne('Ali', 'Kaboré', ton: Ton.vert),
+          depart: lTampouy,
+          arrivee: lKoudCentre,
+          quand: a(jour(n).add(const Duration(days: 2)), 6, 30),
+          places: 2,
+        ),
+        DemandeTrajet(
+          id: 'D-ex3',
+          passager: const Personne('Salam', 'Ouédraogo', ton: Ton.etoile),
+          depart: lDassasgho,
+          arrivee: lUnivOuaga,
+          quand: a(demain, 7, 30),
+        ),
+      ]);
 
     if (!historique) {
       // Nouveau compte : aucun historique, portefeuille vide.

@@ -393,8 +393,44 @@ class _ResultatsEcranState extends State<ResultatsEcran> {
               CarteTrajet(
                 trajet: liste[i],
                 selection: i == 0,
-                onTap: () => ouvrir(context, FicheEcran(trajet: liste[i], places: widget.places)),
+                croisement: texteCroisement(s.correspondancePour(liste[i], d, a)),
+                onTap: () => ouvrir(
+                  context,
+                  FicheEcran(trajet: liste[i], places: widget.places, montee: d, descente: a),
+                ),
               ),
+            Carte(
+              pointillee: true,
+              bord: C.laterite,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(liste.isEmpty ? 'Publiez votre demande' : 'Aucune offre ne vous convient ?', style: T.gras),
+                  const SizedBox(height: 4),
+                  Doux(
+                    'Les conducteurs qui passent par ${capitaliser(d.quartier)} et ${capitaliser(a.quartier)} '
+                    'verront votre demande et pourront vous proposer une place.',
+                    taille: 14,
+                  ),
+                  const SizedBox(height: 10),
+                  BtnClair(
+                    'Publier ma demande',
+                    icon: Icons.campaign_outlined,
+                    onPressed: () {
+                      final quand = widget.interVilles
+                          ? DateTime(s.maintenant.year, s.maintenant.month, s.maintenant.day + 1, 7)
+                          : s.maintenant;
+                      if (essayer(
+                        context,
+                        () => s.publierDemande(depart: d, arrivee: a, quand: quand, places: widget.places),
+                      )) {
+                        message(context, 'Demande publiée : les conducteurs qui passent par là la voient.');
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
             const Doux(
               'Prix plafonnés : le conducteur partage ses frais de carburant, il ne fait pas de bénéfice.',
             ),
@@ -405,11 +441,20 @@ class _ResultatsEcranState extends State<ResultatsEcran> {
   }
 }
 
+/// « Montée sur la route · dépose à 800 m de votre adresse ».
+String? texteCroisement(({double monte, double descend})? c) {
+  if (c == null) return null;
+  return 'Montée ${ecartTexte(c.monte)} · dépose ${ecartTexte(c.descend)} de votre adresse';
+}
+
 class CarteTrajet extends StatelessWidget {
-  const CarteTrajet({super.key, required this.trajet, required this.onTap, this.selection = false});
+  const CarteTrajet({super.key, required this.trajet, required this.onTap, this.selection = false, this.croisement});
   final Trajet trajet;
   final VoidCallback onTap;
   final bool selection;
+
+  /// Croisement avec l'adresse du passager (montée et dépose).
+  final String? croisement;
 
   @override
   Widget build(BuildContext context) {
@@ -450,6 +495,21 @@ class CarteTrajet extends StatelessWidget {
             ),
           ],
         ),
+        if (croisement != null) ...[
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              const Icon(Icons.near_me_outlined, size: 16, color: C.vertF),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  croisement!,
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: C.vertF),
+                ),
+              ),
+            ],
+          ),
+        ],
         const SizedBox(height: 12),
         const Sep(),
         const SizedBox(height: 12),
@@ -504,9 +564,13 @@ class CarteTrajet extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class FicheEcran extends StatefulWidget {
-  const FicheEcran({super.key, required this.trajet, this.places = 1});
+  const FicheEcran({super.key, required this.trajet, this.places = 1, this.montee, this.descente});
   final Trajet trajet;
   final int places;
+
+  /// Adresses du passager, croisées avec le trajet.
+  final Lieu? montee;
+  final Lieu? descente;
 
   @override
   State<FicheEcran> createState() => _FicheEcranState();
@@ -562,6 +626,28 @@ class _FicheEcranState extends State<FicheEcran> {
                 ),
               ),
             ),
+            if (widget.montee != null && widget.descente != null)
+              Builder(
+                builder: (context) {
+                  final c = s.correspondancePour(t, widget.montee!, widget.descente!);
+                  return Carte(
+                    couleur: C.vertC,
+                    bord: const Color(0xFFA9D3B7),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Votre trajet', style: T.gras),
+                        const SizedBox(height: 6),
+                        Text('Vous montez : ${widget.montee!.complet}', style: T.petit),
+                        if (c != null) Doux('Départ du conducteur ${ecartTexte(c.monte)}'),
+                        const SizedBox(height: 6),
+                        Text('Vous descendez : ${widget.descente!.complet}', style: T.petit),
+                        if (c != null) Doux('Dépose ${ecartTexte(c.descend)} de votre adresse'),
+                      ],
+                    ),
+                  );
+                },
+              ),
             if (GoogleMapsRouteEmbed.disponible)
               GoogleMapsRouteEmbed(
                 departure: '${t.depart.quartier}, ${t.depart.ville}, Burkina Faso',
@@ -699,7 +785,10 @@ class _FicheEcranState extends State<FicheEcran> {
                   'Continuer',
                   onPressed: t.placesLibres < 1
                       ? null
-                      : () => ouvrir(context, PaiementEcran(trajet: t, places: _places)),
+                      : () => ouvrir(
+                          context,
+                          PaiementEcran(trajet: t, places: _places, montee: widget.montee, descente: widget.descente),
+                        ),
                 ),
               ),
             ],
@@ -715,9 +804,11 @@ class _FicheEcranState extends State<FicheEcran> {
 // ---------------------------------------------------------------------------
 
 class PaiementEcran extends StatefulWidget {
-  const PaiementEcran({super.key, required this.trajet, required this.places});
+  const PaiementEcran({super.key, required this.trajet, required this.places, this.montee, this.descente});
   final Trajet trajet;
   final int places;
+  final Lieu? montee;
+  final Lieu? descente;
 
   @override
   State<PaiementEcran> createState() => _PaiementEcranState();
@@ -761,7 +852,14 @@ class _PaiementEcranState extends State<PaiementEcran> {
     }
     Reservation? resa;
     final ok = essayer(context, () {
-      resa = s.reserver(widget.trajet, places: widget.places, paiement: _mode, utiliserBonus: _bonus);
+      resa = s.reserver(
+        widget.trajet,
+        places: widget.places,
+        paiement: _mode,
+        utiliserBonus: _bonus,
+        montee: widget.montee,
+        descente: widget.descente,
+      );
     });
     if (ok && mounted) remplacer(context, AttenteEcran(reservation: resa!));
   }
