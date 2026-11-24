@@ -33,9 +33,22 @@ L'application reprend les écrans mobiles du prototype « Latérite » (couleurs
 polices Figtree et Bricolage Grotesque, en-tête « piste », billet) :
 
 - **Compte** : bienvenue, numéro, code SMS, profil, contact d'urgence,
-  suppression du compte. La photo de profil et les photos des documents du
-  conducteur se prennent avec l'appareil photo ou s'importent depuis la galerie
-  (gardées en mémoire pendant la session, rien n'est envoyé à un serveur).
+  suppression du compte. La photo de profil se prend avec l'appareil photo ou
+  s'importe depuis la galerie ; les documents du conducteur se prennent
+  **seulement avec l'appareil photo** (gardés en mémoire pendant la session,
+  rien n'est envoyé à un serveur).
+- **Documents du conducteur** : CNIB, selfie avec la CNIB, permis, carte grise,
+  assurance et photo du véhicule. Le conducteur saisit ce que disent ses
+  documents (date de naissance, numéros, dates de validité, plaques) et
+  l'application contrôle : 21 ans ou plus, permis depuis 2 ans, CNIB et
+  assurance valides, plaque au format habituel et identique sur la carte grise
+  et l'assurance, photos prises avec l'appareil. Un rappel arrive 30 jours avant
+  l'expiration de l'assurance ou de la CNIB ; une fois expirée, le conducteur ne
+  peut plus publier jusqu'à l'envoi du nouveau document.
+- **Liste de vérification de l'équipe** (écran de démonstration du futur
+  back-office) : 13 points à cocher (identité, permis, véhicule, assurance,
+  entretien avec les originaux et la voiture) avant de pouvoir valider un
+  conducteur, ou refus avec un motif que le conducteur voit et corrige.
 - **Passager** : recherche en ville ou entre villes, résultats filtrables, fiche
   du trajet, paiement (portefeuille avec bonus, Orange Money, Moov Money,
   espèces), demande en attente, billet avec QR et code de départ, mes trajets,
@@ -103,8 +116,11 @@ l'écran d'accueil » ou « Installer l'application ») l'ouvre en plein écran,
 la barre du navigateur.
 
 ### Raccourcis de démonstration
-- « Simuler l'acceptation du conducteur » et « Simuler la validation par
-  l'équipe » remplacent les actions qui seront faites par d'autres personnes.
+- « Simuler l'acceptation du conducteur » et « Vérification par l'équipe
+  (démo) » remplacent les actions qui seront faites par d'autres personnes.
+- Pour le compte de démonstration, ce que disent les documents d'Hermès est
+  pré-rempli (seules les photos restent à prendre) et son assurance expire
+  dans 20 jours : le rappel s'affiche dans l'espace conducteur.
 - Au premier trajet publié, deux demandes fictives arrivent. Les codes de départ
   de ces passagers sont affichés à l'écran ; le scanner propose de simuler son
   résultat (la caméra n'est pas encore utilisée).
@@ -124,22 +140,31 @@ maquette, prévu en Next.js) n'est pas encore construit.
 
 ### Carte Google Maps sur le Web
 
-L’aperçu d’itinéraire utilise l’API officielle Maps Embed, sans frais d’usage
-selon Google, et nécessite une clé API. La clé n’est pas incluse dans le dépôt.
-Pour l’essai local, créer une clé restreinte à l’API Maps Embed puis lancer :
+Sur le Web, la carte du trajet est une vraie carte Google Maps (Maps
+JavaScript API) avec un **style clair et coloré proche de Plans** : terrain
+crème, routes blanches, grands axes jaunes, parcs verts, eau bleue, itinéraire
+bleu, départ vert, arrivée latérite et position de la voiture. La recherche
+de lieux propose les **adresses de la base Google Maps** au Burkina Faso
+(Places API) en plus des quartiers de l'application ; l'adresse choisie garde
+sa vraie position pour les distances, les prix et le croisement des trajets.
+Le code est dans `web/carte.js` et `lib/carte.dart`.
+
+La clé n’est pas incluse dans le dépôt. Dans la console Google Cloud, sur le
+projet de la clé, **activer Maps JavaScript API, Places API (New) et Routes
+API**. Pour l’essai local :
 
 ```powershell
 flutter run -d chrome "--dart-define=GOOGLE_MAPS_EMBED_API_KEY=VOTRE_CLE"
 ```
 
-Pour GitHub Pages, ajouter `GOOGLE_MAPS_EMBED_API_KEY` comme secret d’action du
-dépôt; le workflow accepte aussi le nom `GOOGLE_MAPS_API`. La clé est intégrée
-au JavaScript public du site : restreindre son
-référent HTTP à `https://hermes-bit.github.io/*` et l’API autorisée à Maps
-Embed. Un secret GitHub ne rend pas une clé incluse dans le navigateur privée.
-Sans clé, l’application indique explicitement que la carte n’est pas configurée.
-Maps Embed est réservé au Web; l’application Flutter native n’affiche pas cette
-carte intégrée.
+Pour GitHub Pages, le secret d’action `GOOGLE_MAPS_EMBED_API_KEY` (ou
+`GOOGLE_MAPS_API`) reste utilisé. La clé est intégrée au JavaScript public du
+site : restreindre son référent HTTP à `https://hermes-bit.github.io/*` et ses
+API aux trois ci-dessus. Un secret GitHub ne rend pas une clé incluse dans le
+navigateur privée. Sans clé, si une API n’est pas activée ou hors réseau,
+l’application affiche une carte dessinée dans le même style et la liste de
+lieux de l’application. L’application Flutter native (Android, iOS) utilise
+cette carte dessinée.
 
 Pour Android, connecter un appareil ou démarrer un émulateur, accepter les
 licences du SDK Android, puis utiliser `flutter run`. iOS nécessite macOS et
@@ -182,8 +207,9 @@ paiement, ni vérification d'identité, ni géolocalisation, ni messagerie réel
 ni dispositif SOS : aucune alerte ni aucun SMS n'est envoyé. Sur le Web, les
 boutons « Appeler la police · 17 » et « pompiers · 18 » ouvrent le composeur du
 téléphone ; ailleurs, ils affichent le numéro à composer. Le QR du billet est
-une illustration non lisible. La carte du trajet est un dessin, remplacé par
-Google Maps Embed sur le Web lorsqu'une clé est configurée. Les règles de prix
+une illustration non lisible. La position de la voiture sur la carte est
+simulée (pas de GPS). La carte du trajet est un dessin, remplacé par Google
+Maps sur le Web lorsqu'une clé est configurée. Les règles de prix
 et de remboursement sont calculées mais ne déplacent aucun argent réel. Ne
 saisissez pas de coordonnées bancaires ou d’informations personnelles réelles.
 

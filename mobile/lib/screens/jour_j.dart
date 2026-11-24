@@ -135,10 +135,15 @@ class _EnRouteEcranState extends State<EnRouteEcran> {
                     children: [
                       Expanded(
                         child: Btn(
-                          'Je suis arrivé${s.femme ? 'e' : ''}',
+                          r.statut == StatutResa.terminee ? 'Noter le trajet' : 'Je suis arrivé${s.femme ? 'e' : ''}',
                           onPressed: () {
                             s.arriver(r);
-                            remplacer(context, NoterEcran(reservation: r));
+                            if (r.notee) {
+                              message(context, 'Merci, ce trajet est déjà noté.');
+                            } else {
+                              // Au-dessus du trajet : « Retour » y ramène.
+                              ouvrir(context, NoterEcran(reservation: r));
+                            }
                           },
                         ),
                       ),
@@ -361,6 +366,8 @@ class _NoterEcranState extends State<NoterEcran> {
       children: [
         Piste(
           centre: true,
+          // Retour à l'écran précédent : la note peut se donner plus tard (72 h).
+          retour: true,
           children: [
             Ava(c.initiales, taille: 84, fond: C.surface, texte: C.lateriteF),
             const SizedBox(height: 8),

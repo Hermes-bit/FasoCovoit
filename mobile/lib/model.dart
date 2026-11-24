@@ -794,13 +794,99 @@ class GainTrajet {
   int get total => mobile + especes;
 }
 
+/// Documents du conducteur, photographiés avec l'appareil photo de
+/// l'application (pas d'import depuis la galerie).
 const documentsConducteur = <String, String>{
   'CNIB': 'Recto et verso',
+  'Selfie avec la CNIB': 'Votre visage et la carte, sur la même photo',
   'Permis de conduire': 'Délivré il y a 2 ans au moins',
-  'Carte grise': 'Toyota Corolla · 11 HH 2345',
-  'Assurance': 'En cours de validité',
+  'Carte grise': 'Au nom du conducteur ou du propriétaire',
+  'Assurance': 'Attestation en cours de validité',
   'Photo du véhicule': 'Plaque bien lisible',
 };
+
+/// Documents pris avec la caméra avant.
+const selfiesDocuments = {'Selfie avec la CNIB'};
+
+/// Ce que disent les documents, saisi par le conducteur : l'application
+/// contrôle les règles, l'équipe compare avec les photos et les originaux.
+class DossierConducteur {
+  DateTime? naissance;
+  String cnibNumero = '';
+  DateTime? cnibExpire;
+  String permisNumero = '';
+  DateTime? permisDelivre;
+  String plaque = '';
+  String vehicule = '';
+  String assureur = '';
+  String police = '';
+  String plaqueAssurance = '';
+  DateTime? assuranceFin;
+
+  void vider() {
+    naissance = cnibExpire = permisDelivre = assuranceFin = null;
+    cnibNumero = permisNumero = plaque = vehicule = assureur = police = plaqueAssurance = '';
+  }
+}
+
+/// Résultat d'un contrôle automatique du dossier.
+class Controle {
+  const Controle(this.libelle, this.ok, [this.detail]);
+  final String libelle;
+  final bool ok;
+  final String? detail;
+}
+
+/// « 11 hh-2345 » → « 11HH2345 ».
+String normaliserPlaque(String p) => p.toUpperCase().replaceAll(RegExp('[^A-Z0-9]'), '');
+
+/// Format habituel des plaques burkinabè : « 11 HH 2345 ».
+bool plaqueValide(String p) => RegExp(r'^\d{2}[A-Z]{1,2}\d{4}$').hasMatch(normaliserPlaque(p));
+
+/// Âge révolu à une date (ou ancienneté d'un permis).
+int anneesEntre(DateTime debut, DateTime date) {
+  var a = date.year - debut.year;
+  if (date.month < debut.month || (date.month == debut.month && date.day < debut.day)) a--;
+  return a;
+}
+
+/// Liste de vérification de l'équipe, à cocher pour chaque conducteur avant
+/// de valider son compte (futur back-office).
+const verificationEquipe = <(String, List<String>)>[
+  ('Identité', [
+    'CNIB nette, recto et verso, sans trace de retouche',
+    'Nom de la CNIB identique à celui du compte',
+    'Visage du selfie identique à la photo de la CNIB',
+    'Numéro, date de naissance et validité saisis conformes à la CNIB',
+  ]),
+  ('Permis', [
+    'Nom du permis identique à celui de la CNIB',
+    'Catégorie B et date de délivrance conformes à la saisie',
+  ]),
+  ('Véhicule', [
+    'Plaque de la carte grise identique à celle de la photo du véhicule',
+    'Modèle et couleur de la photo conformes à la carte grise',
+  ]),
+  ('Assurance', [
+    'Attestation pour cette plaque, dates conformes à la saisie',
+    "Validité confirmée par l'assureur (appel avec le numéro de police)",
+  ]),
+  ('Entretien', [
+    'Originaux vus en personne : CNIB, permis, carte grise, assurance',
+    'Véhicule vu : plaque, modèle et couleur conformes',
+    'Charte du conducteur expliquée et acceptée',
+  ]),
+];
+
+/// Motifs de refus proposés à l'équipe.
+const motifsRefus = [
+  'Photo illisible',
+  'Nom différent selon les documents',
+  'Visage différent de la CNIB',
+  'Plaque différente',
+  'Assurance non valable',
+  'Originaux non présentés',
+];
 
 // ---------------------------------------------------------------------------
 // État de l'application (démonstration en mémoire)
@@ -992,6 +1078,11 @@ class AppState extends ChangeNotifier {
     final demo = tel == numeroDemo;
     photo = null;
     photosDocuments.clear();
+    _photosImportees.clear();
+    dossier.vider();
+    verificationsFaites.clear();
+    motifRefus = null;
+    valideLe = null;
     if (demo) {
       prenom = 'Hermès';
       nom = 'Barry';
@@ -1547,6 +1638,7 @@ class AppState extends ChangeNotifier {
   }
 
   void arriver(Reservation r) {
+    if (r.statut == StatutResa.terminee) return; // déjà arrivé
     r.statut = StatutResa.terminee;
     for (final o in operations) {
       if (o.ref == r.ref && o.statut == StatutOp.bloque) {
@@ -1691,28 +1783,196 @@ class AppState extends ChangeNotifier {
   /// Photos des documents du conducteur (CNIB, permis…), en mémoire.
   final Map<String, Uint8List> photosDocuments = {};
 
-  void envoyerDocument(String doc, {Uint8List? photo}) {
+  /// Documents dont la photo a été importée au lieu d'être prise : refusés.
+  final Set<String> _photosImportees = {};
+
+  /// Ce que disent les documents (saisi par le conducteur).
+  final DossierConducteur dossier = DossierConducteur();
+
+  /// Points de la liste de vérification déjà cochés par l'équipe.
+  final Set<String> verificationsFaites = {};
+
+  /// Motif du dernier refus de l'équipe, à corriger avant de renvoyer.
+  String? motifRefus;
+  DateTime? valideLe;
+
+  void envoyerDocument(String doc, {Uint8List? photo, bool appareil = true}) {
     documentsEnvoyes.add(doc);
     if (photo != null && photo.isNotEmpty) photosDocuments[doc] = photo;
+    appareil ? _photosImportees.remove(doc) : _photosImportees.add(doc);
     _changer();
   }
 
+  void majDossier(void Function(DossierConducteur d) maj) {
+    maj(dossier);
+    _changer();
+  }
+
+  /// Contrôles automatiques du dossier, avant l'envoi à l'équipe.
+  List<Controle> get controlesDossier {
+    final d = dossier, n = jour(maintenant);
+    final manquants = documentsConducteur.keys.where((k) => !documentsEnvoyes.contains(k)).length;
+    final importees = documentsEnvoyes.where(_photosImportees.contains).length;
+    final age = d.naissance == null ? null : anneesEntre(d.naissance!, n);
+    final permis = d.permisDelivre == null ? null : anneesEntre(d.permisDelivre!, n);
+    final plaque = normaliserPlaque(d.plaque), plaqueA = normaliserPlaque(d.plaqueAssurance);
+    final jAssurance = d.assuranceFin == null ? null : jour(d.assuranceFin!).difference(n).inDays;
+    final jCnib = d.cnibExpire == null ? null : jour(d.cnibExpire!).difference(n).inDays;
+    return [
+      Controle(
+        'Photos des ${documentsConducteur.length} documents',
+        manquants == 0,
+        manquants == 0 ? null : pluriel(manquants, 'photo manquante', 'photos manquantes'),
+      ),
+      Controle(
+        "Photos prises avec l'appareil photo",
+        importees == 0,
+        importees == 0 ? null : '${pluriel(importees, 'photo importée', 'photos importées')} : reprenez-les',
+      ),
+      Controle(
+        '21 ans ou plus',
+        age != null && age >= 21,
+        age == null ? 'Date de naissance à saisir' : '$age ans',
+      ),
+      Controle(
+        'CNIB en cours de validité',
+        d.cnibNumero.trim().isNotEmpty && jCnib != null && jCnib >= 0,
+        d.cnibNumero.trim().isEmpty
+            ? 'Numéro à saisir'
+            : jCnib == null
+            ? 'Date de fin de validité à saisir'
+            : jCnib < 0
+            ? 'Expirée depuis le ${dateLongue(d.cnibExpire!)}'
+            : "Jusqu'au ${dateLongue(d.cnibExpire!)} ${d.cnibExpire!.year}",
+      ),
+      Controle(
+        'Permis depuis 2 ans au moins',
+        d.permisNumero.trim().isNotEmpty && permis != null && permis >= 2,
+        d.permisNumero.trim().isEmpty
+            ? 'Numéro à saisir'
+            : permis == null
+            ? 'Date de délivrance à saisir'
+            : 'Délivré il y a ${pluriel(permis, 'an')}',
+      ),
+      Controle(
+        'Plaque au format habituel (ex. 11 HH 2345)',
+        plaqueValide(d.plaque),
+        d.plaque.trim().isEmpty ? 'Plaque de la carte grise à saisir' : null,
+      ),
+      Controle(
+        "Même plaque sur la carte grise et l'assurance",
+        plaque.isNotEmpty && plaque == plaqueA,
+        plaqueA.isEmpty ? "Plaque de l'attestation à saisir" : (plaque == plaqueA ? null : 'Les plaques diffèrent'),
+      ),
+      Controle(
+        'Assurance en cours de validité',
+        d.police.trim().isNotEmpty && jAssurance != null && jAssurance >= 0,
+        d.police.trim().isEmpty
+            ? 'Numéro de police à saisir'
+            : jAssurance == null
+            ? 'Date de fin à saisir'
+            : jAssurance < 0
+            ? 'Expirée depuis le ${dateLongue(d.assuranceFin!)}'
+            : "Jusqu'au ${dateLongue(d.assuranceFin!)} ${d.assuranceFin!.year}",
+      ),
+    ];
+  }
+
+  bool get dossierComplet => controlesDossier.every((c) => c.ok);
+
   void envoyerPourValidation() {
-    if (documentsEnvoyes.length < documentsConducteur.length) {
-      throw ErreurMetier('Envoyez les ${documentsConducteur.length} documents.');
+    final aCorriger = controlesDossier.where((c) => !c.ok).toList();
+    if (aCorriger.isNotEmpty) {
+      final c = aCorriger.first;
+      throw ErreurMetier('À corriger : ${c.libelle.toLowerCase()}${c.detail == null ? '' : ' (${c.detail})'}.');
     }
     if (etapeConducteur == EtapeConducteur.aucune) {
       etapeConducteur = EtapeConducteur.documentsEnvoyes;
+      verificationsFaites.clear();
+      motifRefus = null;
     }
     _changer();
   }
 
-  /// Démo : simule la validation par l'équipe.
-  void simulerValidation() {
-    if (etapeConducteur == EtapeConducteur.documentsEnvoyes) {
-      etapeConducteur = EtapeConducteur.valide;
-      _changer();
+  static final _pointsVerification = [for (final (_, points) in verificationEquipe) ...points];
+
+  /// L'équipe coche (ou décoche) un point de la liste de vérification.
+  void cocherVerification(String point) {
+    verificationsFaites.contains(point) ? verificationsFaites.remove(point) : verificationsFaites.add(point);
+    _changer();
+  }
+
+  int get pointsRestants => _pointsVerification.where((p) => !verificationsFaites.contains(p)).length;
+
+  /// L'équipe valide le compte : tous les points doivent être cochés.
+  void validerParEquipe() {
+    if (etapeConducteur != EtapeConducteur.documentsEnvoyes) {
+      throw ErreurMetier("Le dossier n'est pas en attente de validation.");
     }
+    if (pointsRestants > 0) {
+      throw ErreurMetier('Encore ${pluriel(pointsRestants, 'point')} à vérifier.');
+    }
+    etapeConducteur = EtapeConducteur.valide;
+    valideLe = maintenant;
+    _changer();
+  }
+
+  /// L'équipe refuse le dossier : le conducteur corrige puis le renvoie.
+  void refuserDossier(String motif) {
+    if (etapeConducteur != EtapeConducteur.documentsEnvoyes) return;
+    etapeConducteur = EtapeConducteur.aucune;
+    motifRefus = motif;
+    verificationsFaites.clear();
+    _changer();
+  }
+
+  /// Démo : l'équipe coche toute la liste et valide.
+  void simulerValidation() {
+    if (etapeConducteur != EtapeConducteur.documentsEnvoyes) return;
+    verificationsFaites.addAll(_pointsVerification);
+    validerParEquipe();
+  }
+
+  /// Rappels des documents qui expirent : 30 jours avant, puis bloquants
+  /// (plus de publication) une fois expirés.
+  List<({String doc, String texte, bool bloquant})> get alertesDocuments {
+    if (etapeConducteur == EtapeConducteur.aucune) return const [];
+    final r = <({String doc, String texte, bool bloquant})>[];
+    void verifier(String doc, String nom, DateTime? fin) {
+      if (fin == null) return;
+      final j = jour(fin).difference(jour(maintenant)).inDays;
+      if (j < 0) {
+        r.add((
+          doc: doc,
+          texte: '$nom a expiré le ${dateLongue(fin)} : envoyez le nouveau document. En attendant, vous ne pouvez plus publier.',
+          bloquant: true,
+        ));
+      } else if (j <= 30) {
+        r.add((
+          doc: doc,
+          texte: '$nom expire le ${dateLongue(fin)}${j == 0 ? " (aujourd'hui)" : ' (dans ${pluriel(j, 'jour')})'} : envoyez le nouveau document.',
+          bloquant: false,
+        ));
+      }
+    }
+
+    verifier('Assurance', 'Votre assurance', dossier.assuranceFin);
+    verifier('CNIB', 'Votre CNIB', dossier.cnibExpire);
+    return r;
+  }
+
+  bool get documentsExpires => alertesDocuments.any((a) => a.bloquant);
+
+  /// Nouvelle assurance ou nouvelle CNIB : photo prise avec l'appareil et
+  /// nouvelle date de fin de validité.
+  void renouvelerDocument(String doc, {required DateTime fin, required Uint8List photo}) {
+    if (doc != 'Assurance' && doc != 'CNIB') throw ErreurMetier('Document inconnu.');
+    if (photo.isEmpty) throw ErreurMetier('Prenez la photo du nouveau document.');
+    if (jour(fin).isBefore(jour(maintenant))) throw ErreurMetier('Ce document est déjà expiré.');
+    doc == 'Assurance' ? dossier.assuranceFin = fin : dossier.cnibExpire = fin;
+    photosDocuments[doc] = photo;
+    _photosImportees.remove(doc);
+    _changer();
   }
 
   void activerAbonnement(Formule f) {
@@ -1784,6 +2044,9 @@ class AppState extends ChangeNotifier {
     }
     if (suspendu) {
       throw ErreurMetier('Compte suspendu jusqu\'au ${jourCourt(suspenduJusquau!)}.');
+    }
+    if (documentsExpires) {
+      throw ErreurMetier('Document expiré : envoyez votre nouvelle assurance ou CNIB pour publier.');
     }
     if (abonnement?.arrete == true &&
         maintenant.isAfter(abonnement!.prochainPaiement)) {
@@ -2220,6 +2483,21 @@ class AppState extends ChangeNotifier {
       );
       return;
     }
+
+    // Démo : ce que disent les documents d'Hermès (les photos restent à
+    // prendre). L'assurance expire bientôt : le rappel s'affiche.
+    dossier
+      ..naissance = DateTime(1994, 3, 12)
+      ..cnibNumero = 'B10984527'
+      ..cnibExpire = DateTime(n.year + 4, 6, 30)
+      ..permisNumero = 'BF-2015-0412873'
+      ..permisDelivre = DateTime(2015, 6, 1)
+      ..plaque = '11 HH 2345'
+      ..vehicule = 'Toyota Corolla grise'
+      ..assureur = 'Assureur de démonstration'
+      ..police = 'AUTO-2026-58213'
+      ..plaqueAssurance = '11 HH 2345'
+      ..assuranceFin = jour(n).add(const Duration(days: 20));
 
     // Historique passager
     final regulier = Trajet(

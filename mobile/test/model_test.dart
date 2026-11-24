@@ -348,6 +348,128 @@ void main() {
     });
   });
 
+  group('dossier du conducteur', () {
+    /// Nouveau compte : dossier vide.
+    AppState vierge() {
+      final s = etat();
+      s.verifierCode(s.envoyerCode('76543210'));
+      return s;
+    }
+
+    void remplir(AppState s) {
+      for (final d in documentsConducteur.keys) {
+        s.envoyerDocument(d, photo: Uint8List.fromList([1]));
+      }
+      s.majDossier(
+        (d) => d
+          ..naissance = DateTime(2000, 1, 10)
+          ..cnibNumero = 'B123'
+          ..cnibExpire = DateTime(2030, 1, 1)
+          ..permisNumero = 'P456'
+          ..permisDelivre = DateTime(2020, 5, 2)
+          ..plaque = '11 gl-1234'
+          ..vehicule = 'Kia Picanto bleue'
+          ..assureur = 'Assureur'
+          ..police = 'A-1'
+          ..plaqueAssurance = '11GL1234'
+          ..assuranceFin = DateTime(2027, 6, 30),
+      );
+    }
+
+    List<String> aCorriger(AppState s) => [for (final c in s.controlesDossier) if (!c.ok) c.libelle];
+
+    test('contrôles automatiques : âge, permis, validités, plaques, photos', () {
+      final s = vierge();
+      expect(s.dossierComplet, isFalse);
+      expect(() => s.envoyerPourValidation(), throwsA(isA<ErreurMetier>()));
+      remplir(s);
+      expect(aCorriger(s), isEmpty);
+
+      s.majDossier((d) => d.naissance = DateTime(2006, 1, 1));
+      expect(aCorriger(s), ['21 ans ou plus']);
+      s.majDossier((d) => d.naissance = DateTime(2000, 1, 10));
+
+      s.majDossier((d) => d.permisDelivre = DateTime(2025, 6, 1));
+      expect(aCorriger(s), ['Permis depuis 2 ans au moins']);
+      s.majDossier((d) => d.permisDelivre = DateTime(2020, 5, 2));
+
+      s.majDossier((d) => d.plaqueAssurance = '11 GL 9999');
+      expect(aCorriger(s), ["Même plaque sur la carte grise et l'assurance"]);
+      s.majDossier((d) => d.plaqueAssurance = '11 GL 1234');
+
+      s.majDossier((d) => d.assuranceFin = DateTime(2026, 11, 1));
+      expect(aCorriger(s), ['Assurance en cours de validité']);
+      s.majDossier((d) => d.assuranceFin = DateTime(2027, 6, 30));
+
+      s.envoyerDocument('CNIB', photo: Uint8List.fromList([2]), appareil: false);
+      expect(aCorriger(s), ["Photos prises avec l'appareil photo"]);
+      expect(() => s.envoyerPourValidation(), throwsA(isA<ErreurMetier>()));
+      s.envoyerDocument('CNIB', photo: Uint8List.fromList([3]));
+
+      expect(plaqueValide('11 HH 2345'), isTrue);
+      expect(plaqueValide('ABC'), isFalse);
+      s.envoyerPourValidation();
+      expect(s.etapeConducteur, EtapeConducteur.documentsEnvoyes);
+    });
+
+    test('l’équipe valide seulement avec toute sa liste cochée, ou refuse', () {
+      final s = vierge();
+      remplir(s);
+      s.envoyerPourValidation();
+      final points = [for (final (_, p) in verificationEquipe) ...p];
+      expect(points, hasLength(13));
+      for (final p in points.skip(1)) {
+        s.cocherVerification(p);
+      }
+      expect(s.pointsRestants, 1);
+      expect(() => s.validerParEquipe(), throwsA(isA<ErreurMetier>()));
+
+      s.refuserDossier('Photo illisible');
+      expect(s.etapeConducteur, EtapeConducteur.aucune);
+      expect(s.motifRefus, 'Photo illisible');
+      expect(s.verificationsFaites, isEmpty);
+
+      s.envoyerPourValidation();
+      expect(s.motifRefus, isNull);
+      for (final p in points) {
+        s.cocherVerification(p);
+      }
+      s.validerParEquipe();
+      expect(s.etapeConducteur, EtapeConducteur.valide);
+      expect(s.valideLe, maintenant);
+    });
+
+    test('document qui expire : rappel, puis blocage, puis renouvellement', () {
+      final s = etat();
+      for (final d in documentsConducteur.keys) {
+        s.envoyerDocument(d);
+      }
+      s.envoyerPourValidation();
+      s.simulerValidation();
+      s.activerAbonnement(Formule.mensuel);
+      // Démo : l'assurance d'Hermès expire dans 20 jours.
+      expect(s.alertesDocuments.single.doc, 'Assurance');
+      expect(s.alertesDocuments.single.bloquant, isFalse);
+
+      s.majDossier((d) => d.assuranceFin = DateTime(2026, 11, 20));
+      expect(s.documentsExpires, isTrue);
+      Ligne l = ligneParId('dassasgho-ouaga2000');
+      expect(
+        () => s.publier(ligne: l, depart: maintenant.add(const Duration(days: 1)), places: 2, prix: 400),
+        throwsA(isA<ErreurMetier>()),
+      );
+
+      expect(
+        () => s.renouvelerDocument('Assurance', fin: DateTime(2026, 1, 1), photo: Uint8List.fromList([1])),
+        throwsA(isA<ErreurMetier>()),
+      );
+      s.renouvelerDocument('Assurance', fin: DateTime(2027, 11, 30), photo: Uint8List.fromList([1]));
+      expect(s.alertesDocuments, isEmpty);
+      l = ligneParId('dassasgho-ouaga2000');
+      expect(s.publier(ligne: l, depart: maintenant.add(const Duration(days: 1)), places: 2, prix: 400).ligne, l);
+    });
+  });
+
   group('espace conducteur', () {
     AppState conducteurActif() {
       final s = etat();

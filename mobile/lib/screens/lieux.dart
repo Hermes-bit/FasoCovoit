@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
+import '../carte.dart';
 import '../formats.dart';
 import '../model.dart';
 import '../theme.dart';
@@ -74,16 +77,62 @@ class ChoisirLieuEcran extends StatefulWidget {
 class _ChoisirLieuEcranState extends State<ChoisirLieuEcran> {
   final _recherche = TextEditingController();
 
+  /// Adresses trouvées dans la base de Google Maps (null : pas de recherche
+  /// Google, la liste de l'application suffit).
+  List<SuggestionAdresse>? _google;
+  bool _googleIndisponible = false;
+  bool _chargement = false;
+  Timer? _attente;
+  int _demande = 0;
+
   @override
   void initState() {
     super.initState();
-    _recherche.addListener(() => setState(() {}));
+    _recherche.addListener(_changer);
   }
 
   @override
   void dispose() {
+    _attente?.cancel();
     _recherche.dispose();
     super.dispose();
+  }
+
+  void _changer() {
+    setState(() {});
+    if (!googleMapsDisponible) return;
+    _attente?.cancel();
+    final texte = _recherche.text.trim();
+    if (texte.length < 3) {
+      setState(() => _google = null);
+      return;
+    }
+    // On attend que la saisie se pose : une demande par mot, pas par lettre.
+    _attente = Timer(const Duration(milliseconds: 350), () async {
+      final n = ++_demande;
+      setState(() => _chargement = true);
+      final r = await suggestionsAdresses(texte);
+      if (!mounted || n != _demande) return;
+      setState(() {
+        _chargement = false;
+        _googleIndisponible = r == null;
+        _google = r;
+      });
+    });
+  }
+
+  Future<void> _choisirGoogle(SuggestionAdresse a) async {
+    final lieu = await lieuAdresse(a.id);
+    if (!mounted) return;
+    if (lieu == null) {
+      message(context, 'Adresse introuvable : choisissez un lieu de la liste.');
+      return;
+    }
+    if (lieu == widget.exclu) {
+      message(context, 'C’est déjà le lieu choisi de l’autre côté.');
+      return;
+    }
+    Navigator.pop(context, lieu);
   }
 
   @override
@@ -112,6 +161,36 @@ class _ChoisirLieuEcranState extends State<ChoisirLieuEcran> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
             children: [
+              if (_google != null || _chargement) ...[
+                Row(
+                  children: [
+                    const Expanded(child: Doux('Adresses Google Maps', taille: 14, gras: true)),
+                    if (_chargement)
+                      const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                if (_google != null && _google!.isEmpty)
+                  const Doux('Aucune adresse Google pour cette recherche.')
+                else if (_google != null)
+                  ListeCarte(
+                    children: [
+                      for (final a in _google!)
+                        LigneListe(
+                          onTap: () => _choisirGoogle(a),
+                          children: [
+                            const Icon(Icons.place_outlined, size: 22, color: C.laterite),
+                            Bloc(a.principal, a.secondaire.isEmpty ? null : a.secondaire),
+                          ],
+                        ),
+                    ],
+                  ),
+                const SizedBox(height: 14),
+              ],
+              if (_googleIndisponible && saisie.length >= 3) ...[
+                const Doux('Recherche Google indisponible pour le moment : choisissez dans la liste.'),
+                const SizedBox(height: 14),
+              ],
               for (final ville in centresVilles.keys)
                 if (trouves.any((l) => l.ville == ville)) ...[
                   Padding(
@@ -157,8 +236,10 @@ class _ChoisirLieuEcranState extends State<ChoisirLieuEcran> {
                   ],
                 ),
                 const SizedBox(height: 8),
-                const Doux(
-                  'Pour un lieu hors liste, la distance est estimée depuis le centre de la ville.',
+                Doux(
+                  googleMapsDisponible
+                      ? 'Choisissez plutôt une adresse Google Maps : sa position exacte sert au calcul.'
+                      : 'Pour un lieu hors liste, la distance est estimée depuis le centre de la ville.',
                 ),
               ],
             ],

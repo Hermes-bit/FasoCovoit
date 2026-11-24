@@ -31,14 +31,19 @@ class ChoixPhoto {
 }
 
 /// Propose « Prendre une photo », « Importer une photo » et,
-/// si une photo existe déjà, « Retirer la photo ».
+/// si une photo existe déjà, « Retirer la photo ». Sans [galerie] (documents
+/// du conducteur), l'appareil photo s'ouvre directement : une image retouchée
+/// ou trouvée ailleurs ne peut pas être envoyée.
 Future<ChoixPhoto?> demanderPhoto(
   BuildContext context, {
   required String titre,
   bool selfie = false,
   bool peutRetirer = false,
+  bool galerie = true,
 }) async {
-  final choix = await showModalBottomSheet<String>(
+  final choix = !galerie && !peutRetirer
+      ? 'appareil'
+      : await showModalBottomSheet<String>(
     context: context,
     builder: (c) => SafeArea(
       child: Padding(
@@ -58,13 +63,14 @@ Future<ChoixPhoto?> demanderPhoto(
                     Bloc('Prendre une photo', "Avec l'appareil photo du téléphone"),
                   ],
                 ),
-                LigneListe(
-                  onTap: () => Navigator.pop(c, 'galerie'),
-                  children: const [
-                    Icon(Icons.photo_library_outlined, size: 22),
-                    Bloc('Importer une photo', 'Depuis la galerie ou les fichiers'),
-                  ],
-                ),
+                if (galerie)
+                  LigneListe(
+                    onTap: () => Navigator.pop(c, 'galerie'),
+                    children: const [
+                      Icon(Icons.photo_library_outlined, size: 22),
+                      Bloc('Importer une photo', 'Depuis la galerie ou les fichiers'),
+                    ],
+                  ),
                 if (peutRetirer)
                   LigneListe(
                     onTap: () => Navigator.pop(c, 'retirer'),

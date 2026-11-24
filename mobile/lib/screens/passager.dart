@@ -4,8 +4,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../carte.dart';
 import '../formats.dart';
-import '../google_maps_embed.dart';
 import '../model.dart';
 import '../painters.dart';
 import '../photo.dart';
@@ -740,11 +740,13 @@ class _FicheEcranState extends State<FicheEcran> {
                   );
                 },
               ),
-            if (GoogleMapsRouteEmbed.disponible)
-              GoogleMapsRouteEmbed(
-                departure: '${t.depart.quartier}, ${t.depart.ville}, Burkina Faso',
-                destination: '${t.arrivee.quartier}, ${t.arrivee.ville}, Burkina Faso',
-                height: 200,
+            if (googleMapsDisponible)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(18),
+                child: SizedBox(
+                  height: 200,
+                  child: CarteRoute(depart: t.depart, arrivee: t.arrivee, interactive: false, margeHaut: 28, margeBas: 28),
+                ),
               ),
             Carte(
               child: Column(
@@ -1860,7 +1862,8 @@ class ReglesAnnulationEcran extends StatelessWidget {
   );
 }
 
-/// Carte du trajet en cours : Google Maps si la clé est configurée, sinon dessin.
+/// Carte du trajet en cours, plein écran : Google Maps au style clair et
+/// coloré si la clé est configurée, sinon carte dessinée dans le même style.
 class CarteDuTrajet extends StatelessWidget {
   const CarteDuTrajet({super.key, required this.depart, required this.arrivee, this.progression = .58});
   final Lieu depart;
@@ -1868,27 +1871,6 @@ class CarteDuTrajet extends StatelessWidget {
   final double progression;
 
   @override
-  Widget build(BuildContext context) {
-    if (GoogleMapsRouteEmbed.disponible) {
-      return GoogleMapsRouteEmbed(
-        departure: '${depart.quartier}, ${depart.ville}, Burkina Faso',
-        destination: '${arrivee.quartier}, ${arrivee.ville}, Burkina Faso',
-        height: null,
-      );
-    }
-    final inter = depart.ville != arrivee.ville;
-    return Semantics(
-      image: true,
-      label: 'Carte : la voiture est en route vers ${arrivee.ville}',
-      child: CustomPaint(
-        size: Size.infinite,
-        painter: CarteTrajetPainter(
-          villeDepart: inter ? depart.ville : depart.quartier,
-          villeArrivee: inter ? arrivee.ville : arrivee.quartier,
-          etape: inter && arrivee.ville == 'Koudougou' ? 'Sabou' : '',
-          progression: progression,
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) =>
+      CarteRoute(depart: depart, arrivee: arrivee, progression: progression, margeHaut: 24, margeBas: 40);
 }

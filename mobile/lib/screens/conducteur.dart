@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../appel.dart';
+import '../carte.dart';
 import '../formats.dart';
-import '../google_maps_embed.dart';
 import '../model.dart';
 import '../painters.dart';
 import '../photo.dart';
@@ -119,6 +119,31 @@ class ConducteurAccueilOnglet extends StatelessWidget {
                 'Abonnement arrêté : vous publiez jusqu’au ${dateCourte(s.abonnement!.prochainPaiement)}.',
                 icon: Icons.info_outline_rounded,
                 ton: TonPastille.etoile,
+              ),
+            // Documents qui expirent : rappel, puis blocage une fois expirés.
+            for (final a in s.alertesDocuments)
+              Carte(
+                couleur: a.bloquant ? C.sosC : C.etoileC,
+                bord: a.bloquant ? C.sosBord : C.etoile,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(a.bloquant ? Icons.block_rounded : Icons.event_busy_outlined, size: 22),
+                        const SizedBox(width: 12),
+                        Expanded(child: Text(a.texte, style: T.petit)),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    BtnClair(
+                      a.doc == 'Assurance' ? 'Envoyer ma nouvelle assurance' : 'Envoyer ma nouvelle CNIB',
+                      icon: Icons.photo_camera_outlined,
+                      onPressed: () => ouvrir(context, MajDocumentEcran(doc: a.doc)),
+                    ),
+                  ],
+                ),
               ),
             if (!s.estConducteur)
               const _ActivationConducteur()
@@ -410,7 +435,10 @@ class _ActivationConducteur extends StatelessWidget {
     final s = AppScope.of(context);
     final e = s.etapeConducteur;
     final (label, ecran) = switch (e) {
-      EtapeConducteur.aucune => ('Envoyer mes documents', const DocumentsEcran() as Widget),
+      EtapeConducteur.aucune => (
+        s.motifRefus == null ? 'Envoyer mes documents' : 'Corriger mon dossier',
+        const DocumentsEcran() as Widget,
+      ),
       EtapeConducteur.documentsEnvoyes => ('Suivre ma validation', const ValidationEcran()),
       _ => ('Choisir mon abonnement', const OffresEcran()),
     };
@@ -427,11 +455,18 @@ class _ActivationConducteur extends StatelessWidget {
             'Pour publier vos trajets et accepter des courses :',
             taille: 14,
           ),
+          if (s.motifRefus != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Dossier refusé : ${s.motifRefus!.toLowerCase()}.',
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: C.sos),
+            ),
+          ],
           const SizedBox(height: 12),
           Etape(
             e == EtapeConducteur.aucune ? EtatEtape.encours : EtatEtape.fait,
-            'Envoyer vos documents',
-            'CNIB, permis, carte grise, assurance, photo du véhicule',
+            'Photographier vos documents',
+            'Avec l’appareil photo de l’application, et saisir ce qu’ils indiquent',
           ),
           Etape(
             switch (e) {
@@ -757,11 +792,19 @@ class _PublierEcranState extends State<PublierEcran> {
                   ),
                 ],
               ),
-            if (ligne != null && GoogleMapsRouteEmbed.disponible)
-              GoogleMapsRouteEmbed(
-                departure: '${_lieuDepart.quartier}, ${_lieuDepart.ville}, Burkina Faso',
-                destination: '${_lieuArrivee!.quartier}, ${_lieuArrivee!.ville}, Burkina Faso',
-                height: 180,
+            if (ligne != null && googleMapsDisponible)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(18),
+                child: SizedBox(
+                  height: 180,
+                  child: CarteRoute(
+                    depart: _lieuDepart,
+                    arrivee: _lieuArrivee!,
+                    interactive: false,
+                    margeHaut: 28,
+                    margeBas: 28,
+                  ),
+                ),
               ),
             Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2227,8 +2270,12 @@ class ProfilConducteurOnglet extends StatelessWidget {
                 ligne(
                   Icons.directions_car_outlined,
                   'Mon véhicule',
-                  'Toyota Corolla grise · 11 HH 2345',
-                  () => informer(context, 'Mon véhicule', 'Toyota Corolla grise, berline essence.\nPlaque 11 HH 2345.\n\nUn changement de véhicule passe par une nouvelle validation de la carte grise.'),
+                  '${s.dossier.vehicule} · ${s.dossier.plaque}',
+                  () => informer(
+                    context,
+                    'Mon véhicule',
+                    '${s.dossier.vehicule}.\nPlaque ${s.dossier.plaque}.\n\nUn changement de véhicule passe par une nouvelle validation de la carte grise.',
+                  ),
                 ),
                 ligne(
                   Icons.description_outlined,

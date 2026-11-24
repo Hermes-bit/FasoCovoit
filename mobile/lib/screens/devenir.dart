@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 
 import '../formats.dart';
@@ -111,8 +113,12 @@ class DevenirIntroEcran extends StatelessWidget {
             Carte(
               child: Column(
                 children: espacer([
-                  numero('1', 'Envoyez vos documents', 'CNIB, permis, carte grise, assurance, photo du véhicule'),
-                  numero('2', "L'équipe vous valide", 'Sous 48 h, avec un court entretien'),
+                  numero(
+                    '1',
+                    'Photographiez vos documents',
+                    'CNIB et selfie avec la carte, permis, carte grise, assurance, véhicule : avec l’appareil photo de l’application',
+                  ),
+                  numero('2', "L'équipe vous valide", 'Sous 48 h, avec un court entretien : apportez vos originaux'),
                   numero('3', 'Choisissez votre abonnement', 'Premier mois offert, sans engagement'),
                 ], 12),
               ),
@@ -147,13 +153,57 @@ class DocumentsEcran extends StatefulWidget {
 
 class _DocumentsEcranState extends State<DocumentsEcran> {
   bool _charte = false;
+  late final AppState _s;
+  late final Map<String, TextEditingController> _champs;
+
+  @override
+  void initState() {
+    super.initState();
+    _s = AppScope.read(context);
+    final d = _s.dossier;
+    _champs = {
+      'cnib': TextEditingController(text: d.cnibNumero),
+      'permis': TextEditingController(text: d.permisNumero),
+      'plaque': TextEditingController(text: d.plaque),
+      'vehicule': TextEditingController(text: d.vehicule),
+      'assureur': TextEditingController(text: d.assureur),
+      'police': TextEditingController(text: d.police),
+      'plaqueAssurance': TextEditingController(text: d.plaqueAssurance),
+    };
+  }
+
+  @override
+  void dispose() {
+    for (final c in _champs.values) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  Widget _champ(String label, String cle, void Function(DossierConducteur d, String v) maj, {String? hint}) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Doux(label, taille: 14),
+      const SizedBox(height: 4),
+      Champ(
+        controller: _champs[cle],
+        hint: hint,
+        label: label,
+        onChanged: (v) => _s.majDossier((d) => maj(d, v)),
+      ),
+    ],
+  );
 
   @override
   Widget build(BuildContext context) {
     final s = AppScope.of(context);
     final total = documentsConducteur.length;
     final faits = s.documentsEnvoyes.length;
-    final complet = faits == total;
+    final d = s.dossier;
+    final n = jour(s.maintenant);
+    final controles = s.controlesDossier;
+    final pret = controles.every((c) => c.ok);
+    Widget sousTitre(String t) => Text(t, style: T.gras);
     return Ecran(
       children: [
         Piste(
@@ -168,12 +218,18 @@ class _DocumentsEcranState extends State<DocumentsEcran> {
           gap: 14,
           padding: const EdgeInsets.fromLTRB(20, 6, 20, 20),
           children: [
+            if (s.motifRefus != null)
+              Bandeau(
+                'Dossier refusé par l’équipe : ${s.motifRefus!.toLowerCase()}. Corrigez puis renvoyez-le.',
+                icon: Icons.error_outline_rounded,
+                ton: TonPastille.sos,
+              ),
             Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Row(
                   children: [
-                    Expanded(child: Text('$faits documents sur $total', style: T.etiq)),
+                    Expanded(child: Text('${pluriel(faits, 'document')} sur $total', style: T.etiq)),
                     Doux('${faits * 100 ~/ total} %', taille: 14, gras: true),
                   ],
                 ),
@@ -188,6 +244,12 @@ class _DocumentsEcranState extends State<DocumentsEcran> {
                   ),
                 ),
               ],
+            ),
+            const Etiq('1. Photos des documents'),
+            const Doux(
+              "Prises avec l'appareil photo de l'application, sans import depuis la galerie : "
+              'une image retouchée ou trouvée ailleurs ne passe pas.',
+              taille: 14,
             ),
             ListeCarte(
               children: [
@@ -222,21 +284,83 @@ class _DocumentsEcranState extends State<DocumentsEcran> {
                               ),
                             ),
                       Bloc(e.key, e.value),
-                      s.documentsEnvoyes.contains(e.key)
-                          ? const Text('Envoyé', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: C.vertF))
-                          : BtnP(
-                              'Photo',
-                              icon: Icons.photo_camera_outlined,
-                              couleur: C.laterite,
-                              onPressed: () async {
-                                final choix = await demanderPhoto(context, titre: e.key);
-                                final octets = choix?.octets;
-                                if (octets != null) s.envoyerDocument(e.key, photo: octets);
-                              },
-                            ),
+                      BtnP(
+                        s.documentsEnvoyes.contains(e.key) ? 'Refaire' : 'Photo',
+                        icon: Icons.photo_camera_outlined,
+                        couleur: s.documentsEnvoyes.contains(e.key) ? C.doux : C.laterite,
+                        onPressed: () async {
+                          final choix = await demanderPhoto(
+                            context,
+                            titre: e.key,
+                            selfie: selfiesDocuments.contains(e.key),
+                            galerie: false,
+                          );
+                          final octets = choix?.octets;
+                          if (octets != null) s.envoyerDocument(e.key, photo: octets);
+                        },
+                      ),
                     ],
                   ),
               ],
+            ),
+            const Etiq('2. Ce que disent vos documents'),
+            Carte(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: espacer([
+                  sousTitre('CNIB'),
+                  ChampDate(
+                    label: 'Date de naissance',
+                    valeur: d.naissance,
+                    premiere: DateTime(1940),
+                    derniere: n,
+                    annees: true,
+                    onChoisi: (v) => s.majDossier((d) => d.naissance = v),
+                  ),
+                  _champ('Numéro de la CNIB', 'cnib', (d, v) => d.cnibNumero = v),
+                  ChampDate(
+                    label: 'CNIB valable jusqu’au',
+                    valeur: d.cnibExpire,
+                    premiere: DateTime(n.year - 5),
+                    derniere: DateTime(n.year + 15),
+                    onChoisi: (v) => s.majDossier((d) => d.cnibExpire = v),
+                  ),
+                  const Sep(),
+                  sousTitre('Permis de conduire'),
+                  _champ('Numéro du permis', 'permis', (d, v) => d.permisNumero = v),
+                  ChampDate(
+                    label: 'Permis délivré le',
+                    valeur: d.permisDelivre,
+                    premiere: DateTime(1960),
+                    derniere: n,
+                    annees: true,
+                    onChoisi: (v) => s.majDossier((d) => d.permisDelivre = v),
+                  ),
+                  const Sep(),
+                  sousTitre('Carte grise'),
+                  _champ('Plaque', 'plaque', (d, v) => d.plaque = v, hint: '11 HH 2345'),
+                  _champ('Modèle et couleur', 'vehicule', (d, v) => d.vehicule = v, hint: 'Toyota Corolla grise'),
+                  const Sep(),
+                  sousTitre('Assurance'),
+                  _champ('Assureur', 'assureur', (d, v) => d.assureur = v),
+                  _champ('Numéro de police', 'police', (d, v) => d.police = v),
+                  _champ('Plaque sur l’attestation', 'plaqueAssurance', (d, v) => d.plaqueAssurance = v, hint: '11 HH 2345'),
+                  ChampDate(
+                    label: 'Assurance valable jusqu’au',
+                    valeur: d.assuranceFin,
+                    premiere: DateTime(n.year - 2),
+                    derniere: DateTime(n.year + 3),
+                    onChoisi: (v) => s.majDossier((d) => d.assuranceFin = v),
+                  ),
+                ], 10),
+              ),
+            ),
+            const Etiq('3. Contrôles automatiques'),
+            Carte(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: espacer([for (final c in controles) LigneControle(c)], 10),
+              ),
             ),
             LigneCase(
               carte: false,
@@ -257,7 +381,7 @@ class _DocumentsEcranState extends State<DocumentsEcran> {
             const Doux("Vos documents sont stockés dans un espace privé, visible seulement par l'équipe de validation."),
             Btn(
               'Envoyer pour validation',
-              onPressed: complet && _charte
+              onPressed: pret && _charte
                   ? () {
                       if (essayer(context, s.envoyerPourValidation)) {
                         remplacer(context, const ValidationEcran());
@@ -265,9 +389,11 @@ class _DocumentsEcranState extends State<DocumentsEcran> {
                     }
                   : null,
             ),
-            if (!complet || !_charte)
+            if (!pret || !_charte)
               Doux(
-                !complet ? 'Ajoutez les ${total - faits} documents manquants.' : 'Acceptez la charte pour continuer.',
+                !pret
+                    ? 'À corriger : ${controles.firstWhere((c) => !c.ok).libelle.toLowerCase()}.'
+                    : 'Acceptez la charte pour continuer.',
                 align: TextAlign.center,
               ),
           ],
@@ -289,6 +415,28 @@ class ValidationEcran extends StatelessWidget {
     final s = AppScope.of(context);
     final valide = s.etapeConducteur == EtapeConducteur.valide || s.estConducteur;
     final limite = s.maintenant.add(const Duration(hours: 48));
+    final n = documentsConducteur.length;
+    if (s.etapeConducteur == EtapeConducteur.aucune) {
+      // Dossier refusé (ou pas encore envoyé) : retour aux documents.
+      return Ecran(
+        children: [
+          const Barre(titre: 'Ma validation'),
+          Zone(
+            gap: 14,
+            children: [
+              Titre(s.motifRefus == null ? 'Dossier pas encore envoyé' : 'Dossier à corriger'),
+              if (s.motifRefus != null)
+                Bandeau(
+                  'L’équipe a refusé le dossier : ${s.motifRefus!.toLowerCase()}. Corrigez puis renvoyez-le.',
+                  icon: Icons.error_outline_rounded,
+                  ton: TonPastille.sos,
+                ),
+            ],
+            bas: [Btn('Corriger mon dossier', onPressed: () => remplacer(context, const DocumentsEcran()))],
+          ),
+        ],
+      );
+    }
     return Ecran(
       children: [
         const Barre(titre: 'Ma validation'),
@@ -299,17 +447,19 @@ class ValidationEcran extends StatelessWidget {
             Carte(
               child: Column(
                 children: [
-                  const Etape(EtatEtape.fait, 'Documents envoyés', '5 documents sur 5', taille: 32),
+                  Etape(EtatEtape.fait, 'Documents envoyés', '$n documents sur $n · contrôles automatiques réussis', taille: 32),
                   Etape(
                     valide ? EtatEtape.fait : EtatEtape.encours,
                     "Vérification par l'équipe",
-                    valide ? 'Documents conformes' : 'Réponse sous 48 h, avant ${jourCourt(limite)} ${heureCourte(limite)}',
+                    valide
+                        ? 'Documents conformes${s.valideLe == null ? '' : ' · validé le ${dateCourte(s.valideLe!)}'}'
+                        : 'Réponse sous 48 h, avant ${jourCourt(limite)} ${heureCourte(limite)}',
                     taille: 32,
                   ),
                   Etape(
                     valide ? EtatEtape.fait : EtatEtape.afaire,
                     'Entretien',
-                    'En personne ou en vidéo, 15 minutes',
+                    'En personne de préférence, 15 minutes : apportez vos originaux et la voiture',
                     taille: 32,
                   ),
                   Etape(
@@ -329,14 +479,19 @@ class ValidationEcran extends StatelessWidget {
             ),
             if (!valide)
               const Bandeau(
-                "Prototype : dans l'application réelle, l'équipe vous appelle pour l'entretien puis valide votre compte.",
+                "Prototype : dans l'application réelle, l'équipe vous appelle pour l'entretien, vérifie chaque point "
+                'de sa liste puis valide votre compte. Ici, vous pouvez ouvrir son écran.',
                 icon: Icons.info_outline_rounded,
                 ton: TonPastille.etoile,
               ),
           ],
           bas: [
             if (!valide)
-              Btn('Simuler la validation par l’équipe', onPressed: s.simulerValidation)
+              Btn(
+                'Vérification par l’équipe (démo)',
+                icon: Icons.fact_check_outlined,
+                onPressed: () => ouvrir(context, const VerificationEquipeEcran()),
+              )
             else if (!s.estConducteur)
               Btn('Compte validé : choisir mon abonnement', onPressed: () => ouvrir(context, const OffresEcran()))
             else
@@ -636,7 +791,7 @@ class AboActifEcran extends StatelessWidget {
                       children: espacer([
                         ligne('Formule', a?.formule.nom ?? '—'),
                         ligne('Offert jusqu’au', a == null ? '—' : dateLongue(a.offertJusquau)),
-                        ligne('Véhicule', 'Corolla · 11 HH 2345'),
+                        ligne('Véhicule', '${s.dossier.vehicule} · ${s.dossier.plaque}'),
                       ], 8),
                     ),
                   ),
@@ -667,6 +822,375 @@ class AboActifEcran extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Champs et contrôles du dossier
+// ---------------------------------------------------------------------------
+
+/// Date choisie dans un calendrier (naissance, validité d'un document…).
+class ChampDate extends StatelessWidget {
+  const ChampDate({
+    super.key,
+    required this.label,
+    required this.valeur,
+    required this.onChoisi,
+    required this.premiere,
+    required this.derniere,
+    this.annees = false,
+  });
+  final String label;
+  final DateTime? valeur;
+  final ValueChanged<DateTime> onChoisi;
+  final DateTime premiere;
+  final DateTime derniere;
+
+  /// Le calendrier s'ouvre sur les années (date de naissance, de permis).
+  final bool annees;
+
+  @override
+  Widget build(BuildContext context) {
+    final v = valeur;
+    final texte = v == null ? 'Choisir une date' : '${dateLongue(v)} ${v.year}';
+    Future<void> choisir() async {
+      var initiale = v ?? (annees ? DateTime(derniere.year - 25) : derniere.subtract(Duration(days: derniere.difference(premiere).inDays ~/ 2)));
+      if (initiale.isBefore(premiere)) initiale = premiere;
+      if (initiale.isAfter(derniere)) initiale = derniere;
+      final d = await showDatePicker(
+        context: context,
+        initialDate: initiale,
+        firstDate: premiere,
+        lastDate: derniere,
+        initialDatePickerMode: annees && v == null ? DatePickerMode.year : DatePickerMode.day,
+        helpText: label,
+      );
+      if (d != null) onChoisi(d);
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Doux(label, taille: 14),
+        const SizedBox(height: 4),
+        Semantics(
+          button: true,
+          label: '$label : ${v == null ? 'à choisir' : texte}',
+          excludeSemantics: true,
+          child: Material(
+            color: C.surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: const BorderSide(color: C.trait, width: 2),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: choisir,
+              child: Container(
+                height: 56,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        texte,
+                        style: v == null
+                            ? const TextStyle(fontSize: 16, color: C.doux)
+                            : const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    const Icon(Icons.calendar_today_outlined, size: 20, color: C.doux),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Une ligne de contrôle automatique : réussi ou à corriger.
+class LigneControle extends StatelessWidget {
+  const LigneControle(this.c, {super.key});
+  final Controle c;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label: '${c.libelle} : ${c.ok ? 'réussi' : 'à corriger'}${c.detail == null ? '' : ', ${c.detail}'}',
+    excludeSemantics: true,
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(
+          c.ok ? Icons.check_circle_rounded : Icons.error_outline_rounded,
+          size: 22,
+          color: c.ok ? C.vert : C.sos,
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(c.libelle, style: T.petit.copyWith(fontWeight: FontWeight.w700)),
+              if (c.detail != null) Doux(c.detail!),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Écran de l'équipe : liste de vérification (futur back-office)
+// ---------------------------------------------------------------------------
+
+class VerificationEquipeEcran extends StatelessWidget {
+  const VerificationEquipeEcran({super.key});
+
+  Future<void> _refuser(BuildContext context, AppState s) async {
+    final motif = await showModalBottomSheet<String>(
+      context: context,
+      builder: (c) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+          children: [
+            Text('Motif du refus', style: T.titre(22)),
+            const SizedBox(height: 12),
+            ListeCarte(
+              children: [
+                for (final m in motifsRefus)
+                  LigneListe(
+                    onTap: () => Navigator.pop(c, m),
+                    children: [Bloc(m), const Icon(Icons.chevron_right_rounded, size: 20)],
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+    if (motif == null || !context.mounted) return;
+    s.refuserDossier(motif);
+    Navigator.pop(context);
+    message(context, 'Dossier refusé : le conducteur est prévenu du motif.');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppScope.of(context);
+    final d = s.dossier;
+    final restants = s.pointsRestants;
+    String date(DateTime? x) => x == null ? '—' : '${dateLongue(x)} ${x.year}';
+    Widget info(String l, String v) => Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(width: 96, child: Doux(l, taille: 14)),
+          Expanded(child: Text(v, style: T.petit.copyWith(fontWeight: FontWeight.w700))),
+        ],
+      ),
+    );
+    return Ecran(
+      children: [
+        Barre(titre: 'Vérification du dossier', sousTitre: '${s.moi.complet} · +226 ${s.telephone}'),
+        Zone(
+          gap: 14,
+          children: [
+            const Bandeau(
+              "Prototype : l'écran de l'équipe, dans le futur back-office. Cochez chaque point une fois vérifié : "
+              "le compte ne peut être validé qu'avec la liste complète.",
+              icon: Icons.admin_panel_settings_outlined,
+              ton: TonPastille.etoile,
+            ),
+            const Etiq('Photos envoyées'),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [for (final doc in documentsConducteur.keys) _Vignette(doc, s.photosDocuments[doc])],
+            ),
+            const Etiq('Saisi par le conducteur'),
+            Carte(
+              child: Column(
+                children: [
+                  info('Né le', date(d.naissance)),
+                  info('CNIB', '${d.cnibNumero} · jusqu’au ${date(d.cnibExpire)}'),
+                  info('Permis', '${d.permisNumero} · délivré le ${date(d.permisDelivre)}'),
+                  info('Véhicule', '${d.vehicule} · ${d.plaque}'),
+                  info('Assurance', '${d.assureur} · n° ${d.police} · ${d.plaqueAssurance} · jusqu’au ${date(d.assuranceFin)}'),
+                ],
+              ),
+            ),
+            const Etiq('Contrôles automatiques'),
+            Carte(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: espacer([for (final c in s.controlesDossier) LigneControle(c)], 10),
+              ),
+            ),
+            for (final (groupe, points) in verificationEquipe) ...[
+              Etiq(groupe),
+              Carte(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: espacer([
+                    for (final p in points)
+                      LigneCase(
+                        carte: false,
+                        value: s.verificationsFaites.contains(p),
+                        onChanged: (_) => s.cocherVerification(p),
+                        child: Padding(padding: const EdgeInsets.only(top: 4), child: Text(p, style: T.petit)),
+                      ),
+                  ], 10),
+                ),
+              ),
+            ],
+          ],
+          bas: [
+            Doux(
+              restants == 0 ? 'Tous les points sont vérifiés.' : 'Encore ${pluriel(restants, 'point')} à vérifier.',
+              align: TextAlign.center,
+            ),
+            Btn(
+              'Valider le conducteur',
+              onPressed: restants == 0
+                  ? () {
+                      // L'écran de suivi affiche « Votre compte est validé ».
+                      if (essayer(context, s.validerParEquipe)) Navigator.pop(context);
+                    }
+                  : null,
+            ),
+            BtnClair('Refuser le dossier', couleur: C.sos, onPressed: () => _refuser(context, s)),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _Vignette extends StatelessWidget {
+  const _Vignette(this.doc, this.photo);
+  final String doc;
+  final Uint8List? photo;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: 96,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            width: 96,
+            height: 72,
+            color: C.sable2,
+            child: photo == null
+                ? const Icon(Icons.image_not_supported_outlined, color: C.doux)
+                : Image.memory(
+                    photo!,
+                    fit: BoxFit.cover,
+                    semanticLabel: 'Photo : $doc',
+                    errorBuilder: (_, _, _) => const Icon(Icons.image_outlined, color: C.doux),
+                  ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(doc, style: T.mini, maxLines: 2),
+      ],
+    ),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Document qui expire : nouvelle photo et nouvelle date
+// ---------------------------------------------------------------------------
+
+class MajDocumentEcran extends StatefulWidget {
+  const MajDocumentEcran({super.key, required this.doc});
+
+  /// « Assurance » ou « CNIB ».
+  final String doc;
+
+  @override
+  State<MajDocumentEcran> createState() => _MajDocumentEcranState();
+}
+
+class _MajDocumentEcranState extends State<MajDocumentEcran> {
+  Uint8List? _photo;
+  DateTime? _fin;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppScope.of(context);
+    final n = jour(s.maintenant);
+    final assurance = widget.doc == 'Assurance';
+    return Ecran(
+      children: [
+        Barre(
+          titre: assurance ? 'Nouvelle assurance' : 'Nouvelle CNIB',
+          sousTitre: 'Photo et date de fin de validité',
+        ),
+        Zone(
+          gap: 14,
+          children: [
+            Carte(
+              child: Row(
+                children: [
+                  if (_photo != null)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Image.memory(_photo!, width: 48, height: 48, fit: BoxFit.cover, semanticLabel: 'Photo du document'),
+                    )
+                  else
+                    const Icon(Icons.photo_camera_outlined, size: 26),
+                  const SizedBox(width: 12),
+                  Bloc(
+                    _photo == null ? 'Photo du nouveau document' : 'Photo prise',
+                    "Avec l'appareil photo de l'application",
+                  ),
+                  BtnP(
+                    _photo == null ? 'Photo' : 'Refaire',
+                    icon: Icons.photo_camera_outlined,
+                    couleur: C.laterite,
+                    onPressed: () async {
+                      final c = await demanderPhoto(context, titre: widget.doc, galerie: false);
+                      final octets = c?.octets;
+                      if (octets != null) setState(() => _photo = octets);
+                    },
+                  ),
+                ],
+              ),
+            ),
+            ChampDate(
+              label: 'Valable jusqu’au',
+              valeur: _fin,
+              premiere: n,
+              derniere: DateTime(n.year + (assurance ? 3 : 15)),
+              onChoisi: (v) => setState(() => _fin = v),
+            ),
+            const Doux("L'équipe vérifie le nouveau document. Les passagers ne voient jamais vos documents."),
+          ],
+          bas: [
+            Btn(
+              'Envoyer',
+              onPressed: _photo != null && _fin != null
+                  ? () {
+                      if (essayer(context, () => s.renouvelerDocument(widget.doc, fin: _fin!, photo: _photo!))) {
+                        Navigator.pop(context);
+                        message(context, 'Nouveau document envoyé. Merci !');
+                      }
+                    }
+                  : null,
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

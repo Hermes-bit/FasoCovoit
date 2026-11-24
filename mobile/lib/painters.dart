@@ -192,101 +192,169 @@ class PaysagePainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-/// Carte dessinée du trajet (remplacée par Google Maps quand la clé est configurée).
+/// Couleurs de carte claires, proches de Plans et de Google Maps (les mêmes
+/// que le style Google Maps de `web/carte.js`).
+abstract final class Plan {
+  static const terre = Color(0xFFF6F3EE);
+  static const ilot = Color(0xFFEBE6DC);
+  static const parc = Color(0xFFC8E8B6);
+  static const parcTexte = Color(0xFF3B7A35);
+  static const eau = Color(0xFF9FD3F5);
+  static const eauTexte = Color(0xFF33739F);
+  static const rue = Color(0xFFFFFFFF);
+  static const rueBord = Color(0xFFE4DDD1);
+  static const axe = Color(0xFFFDE49A);
+  static const axeBord = Color(0xFFF1C75A);
+  static const route = Color(0xFF3D8BFD);
+  static const routeBord = Color(0xFF1A5FD0);
+  static const routeFaite = Color(0xFFA9C4F2);
+  static const texte = Color(0xFF2C3440);
+}
+
+/// Carte dessinée du trajet, au style clair et coloré de Plans (remplacée
+/// par Google Maps sur le Web quand la clé est configurée).
 class CarteTrajetPainter extends CustomPainter {
   CarteTrajetPainter({
     required this.villeDepart,
     required this.villeArrivee,
     this.etape = 'Sabou',
     this.progression = .58,
+    this.voiture = true,
   });
   final String villeDepart;
   final String villeArrivee;
   final String etape;
   final double progression;
 
+  /// Affiche la position de la voiture (trajet en cours).
+  final bool voiture;
+
   @override
   void paint(Canvas canvas, Size size) {
     // Mise à l'échelle uniforme « couvrante », centrée.
     final s = math.max(size.width / 390, size.height / 560);
-    canvas.drawRect(Offset.zero & size, Paint()..color = C.sable2);
+    canvas.drawRect(Offset.zero & size, Paint()..color = Plan.terre);
     canvas.save();
     canvas.clipRect(Offset.zero & size);
     canvas.translate((size.width - 390 * s) / 2, (size.height - 560 * s) / 2);
     canvas.scale(s);
-    canvas.drawRect(const Rect.fromLTWH(0, 0, 390, 560), Paint()..color = C.sable2);
-    final bloc = Paint()..color = C.trait;
-    for (final r in const [
-      Rect.fromLTWH(20, 40, 90, 60),
-      Rect.fromLTWH(250, 250, 110, 70),
-      Rect.fromLTWH(40, 380, 70, 90),
-    ]) {
-      canvas.drawRRect(RRect.fromRectAndRadius(r, const Radius.circular(10)), bloc);
-    }
     Paint trait(Color c, double w) => Paint()
       ..color = c
       ..strokeWidth = w
       ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    void texte(String t, Offset o, double taille, FontWeight w, Color c, {bool halo = true}) {
+      TextPainter tp(Paint? contour) => TextPainter(
+        text: TextSpan(
+          text: t,
+          style: TextStyle(
+            fontFamily: 'Figtree',
+            fontSize: taille,
+            fontWeight: w,
+            color: contour == null ? c : null,
+            foreground: contour,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      if (halo) tp(trait(Colors.white, 4)).paint(canvas, o);
+      tp(null).paint(canvas, o);
+    }
+
+    // Îlots bâtis.
+    final ilot = Paint()..color = Plan.ilot;
+    for (final r in const [
+      Rect.fromLTWH(16, 120, 84, 52),
+      Rect.fromLTWH(170, 34, 70, 64),
+      Rect.fromLTWH(250, 250, 110, 66),
+      Rect.fromLTWH(30, 380, 70, 90),
+      Rect.fromLTWH(196, 470, 84, 60),
+      Rect.fromLTWH(120, 236, 56, 46),
+    ]) {
+      canvas.drawRRect(RRect.fromRectAndRadius(r, const Radius.circular(8)), ilot);
+    }
+    // Parc (à l'écart de l'itinéraire) et plans d'eau.
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(const Rect.fromLTWH(270, 96, 112, 92), const Radius.circular(26)),
+      Paint()..color = Plan.parc,
+    );
+    texte('Parc', const Offset(310, 132), 12, FontWeight.w700, Plan.parcTexte);
     canvas.drawPath(
+      Path()
+        ..moveTo(270, -10)
+        ..cubicTo(300, 40, 360, 60, 410, 50)
+        ..lineTo(410, -10)
+        ..close(),
+      Paint()..color = Plan.eau,
+    );
+    canvas.drawOval(const Rect.fromLTWH(8, 214, 64, 34), Paint()..color = Plan.eau);
+    texte('Barrage', const Offset(330, 14), 12, FontWeight.w700, Plan.eauTexte);
+    // Rues blanches bordées.
+    final rues = [
       Path()
         ..moveTo(-10, 190)
         ..cubicTo(90, 170, 150, 230, 250, 205)
         ..cubicTo(350, 180, 380, 150, 410, 170),
-      trait(C.surface, 12),
-    );
-    canvas.drawPath(
       Path()
         ..moveTo(120, -10)
         ..cubicTo(150, 140, 90, 300, 160, 580),
-      trait(C.surface, 9),
-    );
+      Path()
+        ..moveTo(-10, 350)
+        ..lineTo(410, 330),
+      Path()
+        ..moveTo(240, -10)
+        ..lineTo(230, 580),
+    ];
+    for (final r in rues) {
+      canvas.drawPath(r, trait(Plan.rueBord, 12));
+    }
+    for (final r in rues) {
+      canvas.drawPath(r, trait(Plan.rue, 9));
+    }
+    // Grand axe jaune sous l'itinéraire.
     final route = Path()
       ..moveTo(335, 520)
       ..cubicTo(290, 440, 250, 360, 205, 290)
       ..cubicTo(160, 220, 110, 150, 70, 80);
-    canvas.drawPath(route, trait(const Color(0xFFD9824F), 16));
+    canvas.drawPath(route, trait(Plan.axeBord, 22));
+    canvas.drawPath(route, trait(Plan.axe, 19));
+    // Itinéraire bleu, partie faite plus claire.
+    canvas.drawPath(route, trait(Plan.routeBord, 11));
+    canvas.drawPath(route, trait(Plan.route, 7));
     final metrique = route.computeMetrics().first;
-    for (var d = 0.0; d < metrique.length; d += 22) {
-      canvas.drawPath(metrique.extractPath(d, d + 10), trait(C.surface, 3));
+    final p = progression.clamp(0.0, 1.0);
+    if (voiture && p > 0) {
+      canvas.drawPath(metrique.extractPath(0, metrique.length * p), trait(Plan.routeFaite, 7));
     }
-    final parcouru = metrique.extractPath(0, metrique.length * progression);
-    canvas.drawPath(parcouru, trait(C.laterite, 16));
-    canvas.drawCircle(const Offset(335, 520), 10, Paint()..color = C.surface);
-    canvas.drawCircle(const Offset(335, 520), 10, trait(C.vert, 5));
+    // Départ (vert) et destination (latérite).
+    canvas.drawCircle(const Offset(335, 520), 11, Paint()..color = Colors.white);
+    canvas.drawCircle(const Offset(335, 520), 8, Paint()..color = C.vert);
+    canvas.drawCircle(const Offset(70, 80), 14, Paint()..color = Colors.white);
+    canvas.drawCircle(const Offset(70, 80), 11, Paint()..color = C.laterite);
     canvas.save();
-    canvas.translate(56, 62);
-    canvas.scale(1.2);
-    final e = etoilePath(24);
-    canvas.drawPath(e, Paint()..color = C.etoile);
-    canvas.drawPath(e, trait(C.lateriteF, 1.5));
+    canvas.translate(62, 72);
+    canvas.scale(.7);
+    canvas.drawPath(etoilePath(24), Paint()..color = Colors.white);
     canvas.restore();
-    final pos = metrique.getTangentForOffset(metrique.length * progression)!.position;
-    canvas.drawCircle(pos, 24, Paint()..color = C.vert.withValues(alpha: .2));
-    canvas.drawCircle(pos, 13, Paint()..color = C.vert);
-    canvas.drawCircle(pos, 13, trait(Colors.white, 4));
-    void texte(String t, Offset o, double taille, FontWeight w, Color c) {
-      final tp = TextPainter(
-        text: TextSpan(
-          text: t,
-          style: TextStyle(fontFamily: 'Figtree', fontSize: taille, fontWeight: w, color: c),
-        ),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      tp.paint(canvas, o);
+    final pos = metrique.getTangentForOffset(metrique.length * p)!.position;
+    if (voiture) {
+      canvas.drawCircle(pos, 24, Paint()..color = Plan.route.withValues(alpha: .22));
+      canvas.drawCircle(pos, 12, Paint()..color = Colors.white);
+      canvas.drawCircle(pos, 9, Paint()..color = Plan.route);
     }
-
-    texte(villeArrivee, const Offset(96, 64), 14, FontWeight.w800, C.encre);
-    texte(villeDepart, const Offset(222, 531), 14, FontWeight.w800, C.encre);
+    texte(villeArrivee, const Offset(92, 66), 14, FontWeight.w800, Plan.texte);
+    texte(villeDepart, const Offset(222, 531), 14, FontWeight.w800, Plan.texte);
     if (etape.isNotEmpty) {
-      texte(etape, Offset(pos.dx + 20, pos.dy - 20), 13, FontWeight.w600, C.doux);
+      final o = voiture ? Offset(pos.dx + 22, pos.dy - 22) : const Offset(220, 300);
+      texte(etape, o, 13, FontWeight.w600, const Color(0xFF6D7580));
     }
     canvas.restore();
   }
 
   @override
   bool shouldRepaint(CarteTrajetPainter old) =>
-      old.progression != progression || old.villeArrivee != villeArrivee;
+      old.progression != progression || old.villeArrivee != villeArrivee || old.villeDepart != villeDepart || old.voiture != voiture;
 }
 
 /// QR d'illustration (non lisible) : motif déterministe qui change avec la graine.

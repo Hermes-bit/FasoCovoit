@@ -131,7 +131,20 @@ void main() {
     expect(find.text('Fatou S.'), findsOneWidget);
 
     await toucher(tester, find.widgetWithText(Btn, 'Envoyer mes documents'));
-    expect(find.text('0 documents sur 5'), findsOneWidget);
+    expect(find.text('0 document sur 6'), findsOneWidget);
+  });
+
+  testWidgets('noter le conducteur : « Retour » ramène à l’écran précédent', (tester) async {
+    final s = await lancer(tester, connecte: true);
+    await toucher(tester, find.text('Mes trajets'));
+    await toucher(tester, find.text('Passés'));
+    await toucher(tester, find.textContaining('Koudougou').first);
+    expect(find.text('Le trajet avec Issouf ?'), findsOneWidget);
+
+    await toucher(tester, find.byTooltip('Retour'));
+    expect(find.text('Le trajet avec Issouf ?'), findsNothing);
+    expect(find.text('Passés'), findsOneWidget);
+    expect(s.reservations.firstWhere((r) => r.ref == 'FC-8LM2-Q5E').notee, isFalse);
   });
 
   testWidgets('passager : choisir la date et l’heure, publier sa demande, un conducteur vient', (tester) async {
@@ -236,18 +249,30 @@ void main() {
     await toucher(tester, find.text('Devenir conducteur'));
     await toucher(tester, find.widgetWithText(Btn, 'Commencer mon inscription'));
 
-    expect(find.text('0 documents sur 5'), findsOneWidget);
-    for (var i = 0; i < 5; i++) {
+    expect(find.text('0 document sur 6'), findsOneWidget);
+    // Appareil photo seulement : pas de choix « Importer une photo ».
+    for (var i = 0; i < 6; i++) {
       await toucher(tester, find.widgetWithText(BtnP, 'Photo').first);
-      await toucher(tester, find.text('Importer une photo'));
+      expect(find.text('Importer une photo'), findsNothing);
     }
-    expect(find.text('5 documents sur 5'), findsOneWidget);
-    expect(s.photosDocuments, hasLength(5));
+    expect(find.text('6 documents sur 6'), findsOneWidget);
+    expect(s.photosDocuments, hasLength(6));
+    // Démo : informations des documents d'Hermès pré-remplies, contrôles réussis.
+    expect(s.dossierComplet, isTrue);
     await toucher(tester, find.byType(Checkbox));
     await toucher(tester, bouton('Envoyer pour validation'));
 
     expect(find.text("C'est en bonne voie"), findsOneWidget);
-    await toucher(tester, bouton('Simuler la validation par l’équipe'));
+    await toucher(tester, bouton('Vérification par l’équipe (démo)'));
+    expect(find.text('Vérification du dossier'), findsOneWidget);
+    expect(tester.widget<Btn>(bouton('Valider le conducteur')).onPressed, isNull, reason: 'liste incomplète');
+    final points = find.byType(Checkbox).evaluate().length;
+    expect(points, 13);
+    for (var i = 0; i < points; i++) {
+      await toucher(tester, find.byType(Checkbox).at(i));
+    }
+    await toucher(tester, bouton('Valider le conducteur'));
+    expect(find.text('Votre compte est validé'), findsOneWidget);
     await toucher(tester, bouton('Compte validé : choisir mon abonnement'));
     await toucher(tester, bouton('Continuer avec le trimestriel'));
     await toucher(tester, bouton('Activer mon abonnement'));
