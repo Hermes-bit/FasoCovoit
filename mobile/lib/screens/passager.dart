@@ -8,6 +8,7 @@ import '../formats.dart';
 import '../google_maps_embed.dart';
 import '../model.dart';
 import '../painters.dart';
+import '../photo.dart';
 import '../theme.dart';
 import '../ui.dart';
 import 'colis.dart';
@@ -1092,7 +1093,7 @@ class _BilletEcranState extends State<BilletEcran> {
                   ),
                   Row(
                     children: [
-                      Ava(s.moi.initiales),
+                      PhotoRonde(photo: s.photo, initiales: s.moi.initiales),
                       const SizedBox(width: 12),
                       Bloc(s.moi.complet, 'Billet nominatif, non cessible'),
                     ],

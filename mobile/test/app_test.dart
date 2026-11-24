@@ -1,10 +1,19 @@
+import 'dart:convert';
+
 import 'package:fasocovoit/main.dart';
 import 'package:fasocovoit/model.dart';
+import 'package:fasocovoit/photo.dart';
+import 'package:fasocovoit/screens/compte.dart';
 import 'package:fasocovoit/ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 final maintenant = DateTime(2026, 11, 24, 18);
+
+/// Image PNG d'un pixel : l'appareil photo n'existe pas dans les tests.
+final pixel = base64Decode(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+);
 
 Future<AppState> lancer(WidgetTester tester, {bool connecte = false}) async {
   tester.view.physicalSize = const Size(390 * 3, 844 * 3);
@@ -27,6 +36,24 @@ Future<void> toucher(WidgetTester tester, Finder f) async {
 Finder bouton(String label) => find.widgetWithText(Btn, label);
 
 void main() {
+  setUp(() => preneurPhoto = (source, {selfie = false}) async => pixel);
+
+  testWidgets('photo de profil : prendre, puis retirer', (tester) async {
+    final s = await lancer(tester, connecte: true);
+    await toucher(tester, find.text('Profil'));
+    expect(s.photo, isNull);
+
+    await toucher(tester, find.byType(BoutonPhotoProfil));
+    expect(find.text('Prendre une photo'), findsOneWidget);
+    expect(find.text('Importer une photo'), findsOneWidget);
+    await toucher(tester, find.text('Prendre une photo'));
+    expect(s.photo, pixel);
+
+    await toucher(tester, find.byType(BoutonPhotoProfil));
+    await toucher(tester, find.text('Retirer la photo'));
+    expect(s.photo, isNull);
+  });
+
   testWidgets('inscription avec un nouveau numéro : compte vierge', (tester) async {
     final s = await lancer(tester);
     expect(find.text('On fait la route ensemble.'), findsOneWidget);
@@ -79,7 +106,7 @@ void main() {
     await toucher(tester, bouton('Me connecter'));
     expect(s.connecte, isTrue);
     expect(s.solde, 7500);
-    expect(find.text('Ne y windiga, Awa'), findsOneWidget);
+    expect(find.text('Ne y windiga, Hermès'), findsOneWidget);
   });
 
   testWidgets('numéro inconnu sur « J’ai déjà un compte » : création proposée', (tester) async {
@@ -144,18 +171,20 @@ void main() {
     expect(find.text('Mes trajets'), findsWidgets);
   });
 
-  testWidgets('devenir conductrice puis publier un premier trajet', (tester) async {
+  testWidgets('devenir conducteur puis publier un premier trajet', (tester) async {
     final s = await lancer(tester, connecte: true);
 
     await toucher(tester, find.text('Profil'));
-    await toucher(tester, find.text('Devenir conductrice'));
+    await toucher(tester, find.text('Devenir conducteur'));
     await toucher(tester, find.widgetWithText(Btn, 'Commencer mon inscription'));
 
     expect(find.text('0 documents sur 5'), findsOneWidget);
     for (var i = 0; i < 5; i++) {
       await toucher(tester, find.widgetWithText(BtnP, 'Photo').first);
+      await toucher(tester, find.text('Importer une photo'));
     }
     expect(find.text('5 documents sur 5'), findsOneWidget);
+    expect(s.photosDocuments, hasLength(5));
     await toucher(tester, find.byType(Checkbox));
     await toucher(tester, bouton('Envoyer pour validation'));
 
@@ -165,7 +194,7 @@ void main() {
     await toucher(tester, bouton('Continuer avec le trimestriel'));
     await toucher(tester, bouton('Activer mon abonnement'));
 
-    expect(find.text('Bienvenue parmi les conductrices, Awa !'), findsOneWidget);
+    expect(find.text('Bienvenue parmi les conducteurs, Hermès !'), findsOneWidget);
     expect(s.estConducteur, isTrue);
     await toucher(tester, bouton('Publier mon premier trajet'));
 
@@ -187,7 +216,7 @@ void main() {
     expect(s.mode, Mode.conducteur);
     expect(s.trajetsPublies, hasLength(1));
     expect(s.trajetsPublies.single.ligne.arrivee, lKoudS7);
-    expect(find.text('Bonjour Awa'), findsOneWidget);
+    expect(find.text('Bonjour Hermès'), findsOneWidget);
     expect(find.text('1 demande à traiter'), findsOneWidget);
   });
 }

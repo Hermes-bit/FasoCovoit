@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:fasocovoit/formats.dart';
 import 'package:fasocovoit/model.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -38,7 +40,8 @@ void main() {
       expect(s.connecte, isFalse);
       expect(s.verifierCode(code), isTrue);
       expect(s.connecte, isTrue);
-      expect(s.prenom, 'Awa');
+      expect(s.moi.complet, 'Hermès Barry');
+      expect(s.codeParrainage, 'HER-25');
       expect(s.dernierCodeSms, isNull);
     });
 
@@ -74,7 +77,7 @@ void main() {
       s.deconnecter();
 
       expect(s.verifierCode(s.envoyerCode('70000000')), isTrue);
-      expect(s.prenom, 'Awa');
+      expect(s.prenom, 'Hermès');
       expect(s.solde, 7500);
     });
   });
@@ -107,10 +110,26 @@ void main() {
 
     test('recherche par lieux choisis', () {
       final s = etat();
-      expect(s.rechercher(depart: lDassasgho, arrivee: lOuaga2000), hasLength(2));
+      // Hermès : les trajets « Entre femmes » ne lui sont pas proposés.
+      expect(s.rechercher(depart: lDassasgho, arrivee: lOuaga2000), hasLength(1));
       expect(s.rechercher(depart: lTampouy, arrivee: lZogona), isEmpty);
-      expect(s.rechercher(depart: lCissin, arrivee: lKoudS7), hasLength(3));
+      expect(s.rechercher(depart: lCissin, arrivee: lKoudS7), hasLength(2));
       expect(s.rechercher(depart: lOuagaGare, arrivee: lBoboCentre), isEmpty);
+      s.majProfil(femme: true);
+      expect(s.rechercher(depart: lDassasgho, arrivee: lOuaga2000), hasLength(2));
+      expect(s.rechercher(depart: lCissin, arrivee: lKoudS7), hasLength(3));
+    });
+
+    test('photos : profil et documents gardés en mémoire', () {
+      final s = etat();
+      final octets = Uint8List.fromList([1, 2, 3]);
+      s.majPhoto(octets);
+      expect(s.photo, octets);
+      s.majPhoto(null);
+      expect(s.photo, isNull);
+      s.envoyerDocument('CNIB', photo: octets);
+      expect(s.photosDocuments['CNIB'], octets);
+      expect(s.documentsEnvoyes, contains('CNIB'));
     });
 
     test('la recherche ignore accents et majuscules', () {

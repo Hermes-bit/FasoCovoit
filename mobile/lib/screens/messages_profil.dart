@@ -404,7 +404,7 @@ class ProfilOnglet extends StatelessWidget {
           children: [
             Row(
               children: [
-                Ava(s.moi.initiales, taille: 84, fond: C.surface, texte: C.lateriteF),
+                const BoutonPhotoProfil(initiales: true),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
@@ -458,7 +458,12 @@ class ProfilOnglet extends StatelessWidget {
             ),
             ListeCarte(
               children: [
-                ligne(Icons.person_outline_rounded, 'Mes informations', sous: 'Nom, photo, genre', onTap: () => ouvrir(context, const ProfilEcran())),
+                ligne(
+                  Icons.person_outline_rounded,
+                  'Mes informations',
+                  sous: s.photo == null ? 'Nom, photo, genre · ajoutez une photo' : 'Nom, photo, genre',
+                  onTap: () => ouvrir(context, const ProfilEcran()),
+                ),
                 ligne(
                   Icons.warning_amber_rounded,
                   "Contact d'urgence",

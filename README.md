@@ -33,7 +33,9 @@ L'application reprend les écrans mobiles du prototype « Latérite » (couleurs
 polices Figtree et Bricolage Grotesque, en-tête « piste », billet) :
 
 - **Compte** : bienvenue, numéro, code SMS, profil, contact d'urgence,
-  suppression du compte.
+  suppression du compte. La photo de profil et les photos des documents du
+  conducteur se prennent avec l'appareil photo ou s'importent depuis la galerie
+  (gardées en mémoire pendant la session, rien n'est envoyé à un serveur).
 - **Passager** : recherche en ville ou entre villes, résultats filtrables, fiche
   du trajet, paiement (portefeuille avec bonus, Orange Money, Moov Money,
   espèces), demande en attente, billet avec QR et code de départ, mes trajets,
@@ -60,7 +62,7 @@ suspension du conducteur après 3 annulations en 30 jours.
 
 ### Connexion
 
-- **Compte existant de démonstration : 70 00 00 00** (Awa, avec son historique,
+- **Compte existant de démonstration : 70 00 00 00** (Hermès Barry, avec son historique,
   son portefeuille et ses trajets). « J'ai déjà un compte » le propose déjà.
 - Tout autre numéro crée un **nouveau compte vierge** (portefeuille à 0 F) après
   le profil et le contact d'urgence. Un numéro inconnu saisi dans « J'ai déjà un

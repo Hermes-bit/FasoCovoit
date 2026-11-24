@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:typed_data';
 
 import 'package:flutter/widgets.dart';
 
@@ -699,9 +700,12 @@ class AppState extends ChangeNotifier {
     _changer();
   }
   String telephone = '70 00 00 00';
-  String prenom = 'Awa';
-  String nom = 'Traoré';
-  bool femme = true;
+  String prenom = 'Hermès';
+  String nom = 'Barry';
+  bool femme = false;
+
+  /// Photo de profil (prise ou importée), gardée en mémoire.
+  Uint8List? photo;
   String urgenceNom = 'Mariam Traoré';
   String urgenceTel = '+226 76 45 21 09';
   String urgenceLien = 'Maman';
@@ -816,10 +820,12 @@ class AppState extends ChangeNotifier {
     _compteCharge = tel;
     telephone = formaterTel(tel);
     final demo = tel == numeroDemo;
+    photo = null;
+    photosDocuments.clear();
     if (demo) {
-      prenom = 'Awa';
-      nom = 'Traoré';
-      femme = true;
+      prenom = 'Hermès';
+      nom = 'Barry';
+      femme = false;
       urgenceNom = 'Mariam Traoré';
       urgenceTel = '+226 76 45 21 09';
       urgenceLien = 'Maman';
@@ -953,6 +959,12 @@ class AppState extends ChangeNotifier {
     if (prenom != null && prenom.trim().isNotEmpty) this.prenom = prenom.trim();
     if (nom != null) this.nom = nom.trim();
     if (femme != null) this.femme = femme;
+    _changer();
+  }
+
+  /// Nouvelle photo de profil, ou null pour la retirer.
+  void majPhoto(Uint8List? octets) {
+    photo = octets == null || octets.isEmpty ? null : octets;
     _changer();
   }
 
@@ -1291,8 +1303,12 @@ class AppState extends ChangeNotifier {
 
   // ------------------------------------------------------------- conducteur
 
-  void envoyerDocument(String doc) {
+  /// Photos des documents du conducteur (CNIB, permis…), en mémoire.
+  final Map<String, Uint8List> photosDocuments = {};
+
+  void envoyerDocument(String doc, {Uint8List? photo}) {
     documentsEnvoyes.add(doc);
+    if (photo != null && photo.isNotEmpty) photosDocuments[doc] = photo;
     _changer();
   }
 
@@ -1910,7 +1926,7 @@ class AppState extends ChangeNotifier {
         equipe: true,
         messages: [
           Message(
-            'Bonjour Awa, le conducteur a annulé votre trajet Pissy → Zogona.',
+            'Bonjour $prenom, le conducteur a annulé votre trajet Pissy → Zogona.',
             annule.heureDepart,
           ),
           Message('Votre remboursement a été envoyé.', n.subtract(const Duration(days: 1))),

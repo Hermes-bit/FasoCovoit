@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import '../model.dart';
 import '../painters.dart';
+import '../photo.dart';
 import '../theme.dart';
 import '../ui.dart';
 
@@ -251,7 +252,7 @@ class _NumeroEcranState extends State<NumeroEcran> {
               children: [
                 const TextSpan(text: 'Compte de démonstration : '),
                 TextSpan(text: AppState.formaterTel(AppState.numeroDemo), style: T.gras),
-                const TextSpan(text: ' (Awa, avec son historique). Tout autre numéro crée un nouveau compte.'),
+                const TextSpan(text: ' (Hermès Barry, avec son historique). Tout autre numéro crée un nouveau compte.'),
               ],
             ),
           ),
@@ -556,24 +557,9 @@ class _ProfilEcranState extends State<ProfilEcran> {
         children: [
           Column(
             children: [
-              Semantics(
-                button: true,
-                label: 'Prendre une photo',
-                child: InkWell(
-                  customBorder: const CircleBorder(),
-                  onTap: () => message(context, 'La photo se prendra avec l’appareil photo du téléphone.'),
-                  child: CustomPaint(
-                    painter: _CerclePointille(),
-                    child: const SizedBox(
-                      width: 84,
-                      height: 84,
-                      child: Icon(Icons.photo_camera_outlined, size: 30),
-                    ),
-                  ),
-                ),
-              ),
+              const BoutonPhotoProfil(),
               const SizedBox(height: 8),
-              const Doux("Photo prise avec l'appli, visage bien visible", taille: 14),
+              const Doux('Prenez ou importez une photo, visage bien visible', taille: 14),
             ],
           ),
           Column(
@@ -607,6 +593,76 @@ class _ProfilEcranState extends State<ProfilEcran> {
       ),
     ],
   );
+}
+
+/// Photo de profil : appuyer pour prendre, importer ou retirer la photo.
+class BoutonPhotoProfil extends StatelessWidget {
+  const BoutonPhotoProfil({super.key, this.taille = 84, this.initiales = false});
+  final double taille;
+
+  /// Sans photo : afficher les initiales plutôt que le cercle « ajouter ».
+  final bool initiales;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppScope.of(context);
+    Future<void> changer() async {
+      final choix = await demanderPhoto(
+        context,
+        titre: 'Photo de profil',
+        selfie: true,
+        peutRetirer: s.photo != null,
+      );
+      if (choix == null) return;
+      s.majPhoto(choix.octets);
+    }
+
+    return Semantics(
+      button: true,
+      label: s.photo == null ? 'Ajouter une photo de profil' : 'Changer la photo de profil',
+      excludeSemantics: true,
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: changer,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            if (s.photo != null || initiales)
+              PhotoRonde(
+                photo: s.photo,
+                initiales: s.moi.initiales,
+                taille: taille,
+                fond: C.surface,
+                texte: C.lateriteF,
+              )
+            else
+              CustomPaint(
+                painter: _CerclePointille(),
+                child: SizedBox(
+                  width: taille,
+                  height: taille,
+                  child: const Icon(Icons.add_a_photo_outlined, size: 30),
+                ),
+              ),
+            Positioned(
+              right: -2,
+              bottom: -2,
+              child: Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: C.laterite,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: C.surface, width: 2),
+                ),
+                child: const Icon(Icons.photo_camera_outlined, size: 16, color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _CerclePointille extends CustomPainter {

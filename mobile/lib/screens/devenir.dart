@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../formats.dart';
 import '../model.dart';
 import '../painters.dart';
+import '../photo.dart';
 import '../theme.dart';
 import '../ui.dart';
 import 'conducteur.dart';
@@ -193,7 +194,19 @@ class _DocumentsEcranState extends State<DocumentsEcran> {
                 for (final e in documentsConducteur.entries)
                   LigneListe(
                     children: [
-                      s.documentsEnvoyes.contains(e.key)
+                      s.photosDocuments[e.key] != null
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: Image.memory(
+                                s.photosDocuments[e.key]!,
+                                width: 36,
+                                height: 36,
+                                fit: BoxFit.cover,
+                                semanticLabel: 'Photo : ${e.key}',
+                                errorBuilder: (_, _, _) => const Icon(Icons.check_rounded, color: C.vertF),
+                              ),
+                            )
+                          : s.documentsEnvoyes.contains(e.key)
                           ? Container(
                               width: 36,
                               height: 36,
@@ -215,7 +228,11 @@ class _DocumentsEcranState extends State<DocumentsEcran> {
                               'Photo',
                               icon: Icons.photo_camera_outlined,
                               couleur: C.laterite,
-                              onPressed: () => s.envoyerDocument(e.key),
+                              onPressed: () async {
+                                final choix = await demanderPhoto(context, titre: e.key);
+                                final octets = choix?.octets;
+                                if (octets != null) s.envoyerDocument(e.key, photo: octets);
+                              },
                             ),
                     ],
                   ),

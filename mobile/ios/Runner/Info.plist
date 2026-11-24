@@ -49,6 +49,10 @@
 	</dict>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>FasoCovoit utilise l'appareil photo pour votre photo de profil et les documents du conducteur.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>FasoCovoit importe une photo de votre galerie pour votre profil et les documents du conducteur.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>

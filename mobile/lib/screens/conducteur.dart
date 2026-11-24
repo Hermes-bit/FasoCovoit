@@ -7,6 +7,7 @@ import '../formats.dart';
 import '../google_maps_embed.dart';
 import '../model.dart';
 import '../painters.dart';
+import '../photo.dart';
 import '../theme.dart';
 import '../ui.dart';
 import 'colis.dart';
@@ -1791,7 +1792,7 @@ class ProfilConducteurOnglet extends StatelessWidget {
           children: [
             Row(
               children: [
-                Ava(s.moi.initiales, taille: 84, fond: C.etoile, texte: C.encre),
+                PhotoRonde(photo: s.photo, initiales: s.moi.initiales, taille: 84, fond: C.etoile, texte: C.encre),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
