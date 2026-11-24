@@ -638,6 +638,31 @@ void main() {
       );
     });
 
+    test('liste des demandes : écarter, tout effacer ; voiture ; taux d’annulation', () {
+      final s = conducteurActif();
+      final d = s.passagersSansCourse.first;
+      s.ecarterDemande(d);
+      expect(s.passagersSansCourse, isNot(contains(d)));
+
+      s.publier(ligne: Ligne.entre(lOuagaGare, lKoudCentre), depart: DateTime(2026, 11, 25, 7), places: 3, prix: 2000);
+      expect(s.coursesPossibles, isNotEmpty);
+      s.toutEffacer();
+      expect(s.coursesPossibles, isEmpty);
+      expect(s.passagersSansCourse, isEmpty);
+
+      expect(s.tauxAnnulation, isNull, reason: 'pas encore de trajet terminé');
+      expect(
+        () => s.majVoiture(vehicule: 'Kia Picanto', couleur: 'bleue', plaque: 'ABC'),
+        throwsA(isA<ErreurMetier>()),
+      );
+      s.majVoiture(vehicule: 'Kia Picanto', couleur: 'bleue', plaque: '11 gl 1234');
+      expect(s.dossier.voiture, 'Kia Picanto bleue');
+      expect(s.dossier.plaque, '11 GL 1234');
+
+      s.majReglages(enLigne: true, silence: true);
+      expect(s.enLigneUniquement && s.sourdine, isTrue);
+    });
+
     test('publier refuse un prix au-dessus du plafond', () {
       final s = conducteurActif();
       expect(

@@ -22,7 +22,8 @@ class DevenirIntroEcran extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = AppScope.of(context);
     final haut = MediaQuery.paddingOf(context).top;
-    final enCours = s.etapeConducteur == EtapeConducteur.documentsEnvoyes || s.etapeConducteur == EtapeConducteur.valide;
+    final enCours =
+        s.etapeConducteur == EtapeConducteur.documentsEnvoyes || s.etapeConducteur == EtapeConducteur.valide;
     Widget numero(String n, String titre, String sous) => Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -31,13 +32,20 @@ class DevenirIntroEcran extends StatelessWidget {
           height: 34,
           alignment: Alignment.center,
           decoration: const BoxDecoration(color: C.laterite, shape: BoxShape.circle),
-          child: Text(n, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+          child: Text(
+            n,
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+          ),
         ),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: [Text(titre, style: T.gras), const SizedBox(height: 4), Doux(sous, taille: 14)],
+            children: [
+              Text(titre, style: T.gras),
+              const SizedBox(height: 4),
+              Doux(sous, taille: 14),
+            ],
           ),
         ),
       ],
@@ -128,11 +136,7 @@ class DevenirIntroEcran extends StatelessWidget {
               enCours ? 'Suivre ma validation' : 'Commencer mon inscription',
               onPressed: () => ouvrir(context, enCours ? const ValidationEcran() : const DocumentsEcran()),
             ),
-            Lien(
-              "Voir les abonnements d'abord",
-              souligne: false,
-              onTap: () => ouvrir(context, const OffresEcran()),
-            ),
+            Lien("Voir les abonnements d'abord", souligne: false, onTap: () => ouvrir(context, const OffresEcran())),
           ],
         ),
       ],
@@ -185,12 +189,7 @@ class _DocumentsEcranState extends State<DocumentsEcran> {
     children: [
       Doux(label, taille: 14),
       const SizedBox(height: 4),
-      Champ(
-        controller: _champs[cle],
-        hint: hint,
-        label: label,
-        onChanged: (v) => _s.majDossier((d) => maj(d, v)),
-      ),
+      Champ(controller: _champs[cle], hint: hint, label: label, onChanged: (v) => _s.majDossier((d) => maj(d, v))),
     ],
   );
 
@@ -339,12 +338,17 @@ class _DocumentsEcranState extends State<DocumentsEcran> {
                   const Sep(),
                   sousTitre('Carte grise'),
                   _champ('Plaque', 'plaque', (d, v) => d.plaque = v, hint: '11 HH 2345'),
-                  _champ('Modèle et couleur', 'vehicule', (d, v) => d.vehicule = v, hint: 'Toyota Corolla grise'),
+                  _champ('Marque et modèle', 'vehicule', (d, v) => d.vehicule = v, hint: 'Toyota Corolla'),
                   const Sep(),
                   sousTitre('Assurance'),
                   _champ('Assureur', 'assureur', (d, v) => d.assureur = v),
                   _champ('Numéro de police', 'police', (d, v) => d.police = v),
-                  _champ('Plaque sur l’attestation', 'plaqueAssurance', (d, v) => d.plaqueAssurance = v, hint: '11 HH 2345'),
+                  _champ(
+                    'Plaque sur l’attestation',
+                    'plaqueAssurance',
+                    (d, v) => d.plaqueAssurance = v,
+                    hint: '11 HH 2345',
+                  ),
                   ChampDate(
                     label: 'Assurance valable jusqu’au',
                     valeur: d.assuranceFin,
@@ -378,7 +382,9 @@ class _DocumentsEcranState extends State<DocumentsEcran> {
                 ),
               ),
             ),
-            const Doux("Vos documents sont stockés dans un espace privé, visible seulement par l'équipe de validation."),
+            const Doux(
+              "Vos documents sont stockés dans un espace privé, visible seulement par l'équipe de validation.",
+            ),
             Btn(
               'Envoyer pour validation',
               onPressed: pret && _charte
@@ -447,7 +453,12 @@ class ValidationEcran extends StatelessWidget {
             Carte(
               child: Column(
                 children: [
-                  Etape(EtatEtape.fait, 'Documents envoyés', '$n documents sur $n · contrôles automatiques réussis', taille: 32),
+                  Etape(
+                    EtatEtape.fait,
+                    'Documents envoyés',
+                    '$n documents sur $n · contrôles automatiques réussis',
+                    taille: 32,
+                  ),
                   Etape(
                     valide ? EtatEtape.fait : EtatEtape.encours,
                     "Vérification par l'équipe",
@@ -495,10 +506,13 @@ class ValidationEcran extends StatelessWidget {
             else if (!s.estConducteur)
               Btn('Compte validé : choisir mon abonnement', onPressed: () => ouvrir(context, const OffresEcran()))
             else
-              Btn('Aller au mode conducteur', onPressed: () {
-                s.basculerMode(Mode.conducteur);
-                retourAccueil(context);
-              }),
+              Btn(
+                'Aller au mode conducteur',
+                onPressed: () {
+                  s.basculerMode(Mode.conducteur);
+                  retourAccueil(context);
+                },
+              ),
             BtnClair(
               s.mode == Mode.conducteur ? 'Retour à mon espace conducteur' : 'Revenir au mode passager',
               onPressed: () => retourAccueil(context),
@@ -529,7 +543,11 @@ class _OffresEcranState extends State<OffresEcran> {
     final s = AppScope.of(context);
     final valide = s.etapeConducteur == EtapeConducteur.valide;
     Widget atout(IconData i, String t) => Row(
-      children: [Icon(i, size: 18), const SizedBox(width: 8), Expanded(child: Text(t, style: T.petit))],
+      children: [
+        Icon(i, size: 18),
+        const SizedBox(width: 8),
+        Expanded(child: Text(t, style: T.petit)),
+      ],
     );
     return Ecran(
       children: [
@@ -583,7 +601,10 @@ class _OffresEcranState extends State<OffresEcran> {
                   const SizedBox(height: 8),
                   Align(
                     alignment: Alignment.centerLeft,
-                    child: Text(f.economie, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: C.vertF)),
+                    child: Text(
+                      f.economie,
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: C.vertF),
+                    ),
                   ),
                 ],
               ),
@@ -592,7 +613,10 @@ class _OffresEcranState extends State<OffresEcran> {
                 children: espacer([
                   atout(Icons.check_rounded, 'Trajets illimités en ville et entre villes'),
                   atout(Icons.check_rounded, 'Sans engagement : arrêtez quand vous voulez'),
-                  atout(Icons.confirmation_number_outlined, "En plus : 10 % sur les places payées dans l'appli, rien sur les espèces (0 % pendant le pilote)"),
+                  atout(
+                    Icons.confirmation_number_outlined,
+                    "En plus : 10 % sur les places payées dans l'appli, rien sur les espèces (0 % pendant le pilote)",
+                  ),
                 ], 8),
               ),
             ),
@@ -620,9 +644,8 @@ class _OffresEcranState extends State<OffresEcran> {
         Pied(
           child: Btn(
             valide ? 'Continuer avec le ${_f.nom.toLowerCase()}' : 'Commencer mon inscription',
-            onPressed: () => valide
-                ? ouvrir(context, PaiementAboEcran(formule: _f))
-                : remplacer(context, const DocumentsEcran()),
+            onPressed: () =>
+                valide ? ouvrir(context, PaiementAboEcran(formule: _f)) : remplacer(context, const DocumentsEcran()),
           ),
         ),
       ],
@@ -676,7 +699,10 @@ class _PaiementAboEcranState extends State<PaiementAboEcran> {
                   Row(
                     children: [
                       Expanded(child: Doux('Du ${dateCourte(debut)} au ${dateCourte(fin)}', taille: 16)),
-                      const Text('Offert', style: TextStyle(fontWeight: FontWeight.w700, color: C.vertF)),
+                      const Text(
+                        'Offert',
+                        style: TextStyle(fontWeight: FontWeight.w700, color: C.vertF),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -689,7 +715,9 @@ class _PaiementAboEcranState extends State<PaiementAboEcran> {
                   const SizedBox(height: 8),
                   const Sep(),
                   const SizedBox(height: 8),
-                  const Doux('Pas de prélèvement automatique : nous vous rappelons 3 jours avant, vous payez en un geste.'),
+                  const Doux(
+                    'Pas de prélèvement automatique : nous vous rappelons 3 jours avant, vous payez en un geste.',
+                  ),
                 ],
               ),
             ),
@@ -721,10 +749,9 @@ class _PaiementAboEcranState extends State<PaiementAboEcran> {
             onPressed: _conditions
                 ? () {
                     if (essayer(context, () => s.activerAbonnement(f))) {
-                      Navigator.of(context).pushAndRemoveUntil(
-                        MaterialPageRoute(builder: (_) => const AboActifEcran()),
-                        (r) => r.isFirst,
-                      );
+                      Navigator.of(
+                        context,
+                      ).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const AboActifEcran()), (r) => r.isFirst);
                     }
                   }
                 : null,
@@ -750,8 +777,13 @@ class AboActifEcran extends StatelessWidget {
     final bas = MediaQuery.paddingOf(context).bottom;
     Widget ligne(String l, String v) => Row(
       children: [
-        Expanded(child: Text(l, style: const TextStyle(color: Colors.white))),
-        Text(v, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+        Expanded(
+          child: Text(l, style: const TextStyle(color: Colors.white)),
+        ),
+        Text(
+          v,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+        ),
       ],
     );
     return Scaffold(
@@ -791,7 +823,7 @@ class AboActifEcran extends StatelessWidget {
                       children: espacer([
                         ligne('Formule', a?.formule.nom ?? '—'),
                         ligne('Offert jusqu’au', a == null ? '—' : dateLongue(a.offertJusquau)),
-                        ligne('Véhicule', '${s.dossier.vehicule} · ${s.dossier.plaque}'),
+                        ligne('Véhicule', '${s.dossier.voiture} · ${s.dossier.plaque}'),
                       ], 8),
                     ),
                   ),
@@ -804,6 +836,8 @@ class AboActifEcran extends StatelessWidget {
                     texte: C.vertF,
                     onPressed: () {
                       final nav = Navigator.of(context);
+                      // Il vient de s'inscrire : pas besoin de la fiche « Mode conducteur ».
+                      s.vuIntroConducteur();
                       s.basculerMode(Mode.conducteur);
                       nav.popUntil((r) => r.isFirst);
                       nav.push(MaterialPageRoute(builder: (_) => const PublierEcran()));
@@ -855,7 +889,11 @@ class ChampDate extends StatelessWidget {
     final v = valeur;
     final texte = v == null ? 'Choisir une date' : '${dateLongue(v)} ${v.year}';
     Future<void> choisir() async {
-      var initiale = v ?? (annees ? DateTime(derniere.year - 25) : derniere.subtract(Duration(days: derniere.difference(premiere).inDays ~/ 2)));
+      var initiale =
+          v ??
+          (annees
+              ? DateTime(derniere.year - 25)
+              : derniere.subtract(Duration(days: derniere.difference(premiere).inDays ~/ 2)));
       if (initiale.isBefore(premiere)) initiale = premiere;
       if (initiale.isAfter(derniere)) initiale = derniere;
       final d = await showDatePicker(
@@ -924,11 +962,7 @@ class LigneControle extends StatelessWidget {
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(
-          c.ok ? Icons.check_circle_rounded : Icons.error_outline_rounded,
-          size: 22,
-          color: c.ok ? C.vert : C.sos,
-        ),
+        Icon(c.ok ? Icons.check_circle_rounded : Icons.error_outline_rounded, size: 22, color: c.ok ? C.vert : C.sos),
         const SizedBox(width: 10),
         Expanded(
           child: Column(
@@ -992,7 +1026,9 @@ class VerificationEquipeEcran extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(width: 96, child: Doux(l, taille: 14)),
-          Expanded(child: Text(v, style: T.petit.copyWith(fontWeight: FontWeight.w700))),
+          Expanded(
+            child: Text(v, style: T.petit.copyWith(fontWeight: FontWeight.w700)),
+          ),
         ],
       ),
     );
@@ -1021,8 +1057,11 @@ class VerificationEquipeEcran extends StatelessWidget {
                   info('Né le', date(d.naissance)),
                   info('CNIB', '${d.cnibNumero} · jusqu’au ${date(d.cnibExpire)}'),
                   info('Permis', '${d.permisNumero} · délivré le ${date(d.permisDelivre)}'),
-                  info('Véhicule', '${d.vehicule} · ${d.plaque}'),
-                  info('Assurance', '${d.assureur} · n° ${d.police} · ${d.plaqueAssurance} · jusqu’au ${date(d.assuranceFin)}'),
+                  info('Véhicule', '${d.voiture} · ${d.plaque}'),
+                  info(
+                    'Assurance',
+                    '${d.assureur} · n° ${d.police} · ${d.plaqueAssurance} · jusqu’au ${date(d.assuranceFin)}',
+                  ),
                 ],
               ),
             ),
@@ -1044,7 +1083,10 @@ class VerificationEquipeEcran extends StatelessWidget {
                         carte: false,
                         value: s.verificationsFaites.contains(p),
                         onChanged: (_) => s.cocherVerification(p),
-                        child: Padding(padding: const EdgeInsets.only(top: 4), child: Text(p, style: T.petit)),
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(p, style: T.petit),
+                        ),
                       ),
                   ], 10),
                 ),
@@ -1132,10 +1174,7 @@ class _MajDocumentEcranState extends State<MajDocumentEcran> {
     final assurance = widget.doc == 'Assurance';
     return Ecran(
       children: [
-        Barre(
-          titre: assurance ? 'Nouvelle assurance' : 'Nouvelle CNIB',
-          sousTitre: 'Photo et date de fin de validité',
-        ),
+        Barre(titre: assurance ? 'Nouvelle assurance' : 'Nouvelle CNIB', sousTitre: 'Photo et date de fin de validité'),
         Zone(
           gap: 14,
           children: [
@@ -1145,7 +1184,13 @@ class _MajDocumentEcranState extends State<MajDocumentEcran> {
                   if (_photo != null)
                     ClipRRect(
                       borderRadius: BorderRadius.circular(10),
-                      child: Image.memory(_photo!, width: 48, height: 48, fit: BoxFit.cover, semanticLabel: 'Photo du document'),
+                      child: Image.memory(
+                        _photo!,
+                        width: 48,
+                        height: 48,
+                        fit: BoxFit.cover,
+                        semanticLabel: 'Photo du document',
+                      ),
                     )
                   else
                     const Icon(Icons.photo_camera_outlined, size: 26),

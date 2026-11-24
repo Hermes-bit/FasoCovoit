@@ -13,6 +13,7 @@ import '../theme.dart';
 import '../ui.dart';
 import 'colis.dart';
 import 'demande.dart';
+import 'espace_conducteur.dart';
 import 'jour_j.dart';
 import 'messages_profil.dart';
 import 'portefeuille.dart';
@@ -84,7 +85,7 @@ class BasculeMode extends StatelessWidget {
           pilule('Passager', !conducteur, conducteur ? () => s.basculerMode(Mode.passager) : null),
           // L'espace conducteur s'ouvre même avant l'activation du compte :
           // il guide alors vers l'inscription.
-          pilule('Conducteur', conducteur, conducteur ? null : () => s.basculerMode(Mode.conducteur)),
+          pilule('Conducteur', conducteur, conducteur ? null : () => entrerModeConducteur(context)),
         ],
       ),
     );
@@ -101,7 +102,6 @@ class AccueilOnglet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = AppScope.of(context);
-    final haut = MediaQuery.paddingOf(context).top;
     final demandes = s.demandesTrajet.where((d) => d.moi).toList()..sort((a, b) => a.quand.compareTo(b.quand));
     final aVenir = s.aVenir;
     final vide = demandes.isEmpty && aVenir.isEmpty;
@@ -112,100 +112,58 @@ class AccueilOnglet extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Container(
-                padding: EdgeInsets.fromLTRB(20, 16 + haut, 20, 56),
-                decoration: const BoxDecoration(
-                  color: C.laterite,
-                  borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Semantics(
-                          button: true,
-                          label: 'Mon profil',
-                          child: Material(
-                            color: C.surface,
-                            shape: const StadiumBorder(),
-                            child: InkWell(
-                              customBorder: const StadiumBorder(),
-                              onTap: () => s.allerOnglet(3),
-                              child: Padding(
-                                padding: const EdgeInsets.fromLTRB(4, 4, 14, 4),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    PhotoRonde(photo: s.photo, initiales: s.moi.initiales, taille: 32),
-                                    const SizedBox(width: 8),
-                                    Text(s.prenom, style: T.gras),
-                                  ],
-                                ),
+              EnteteEncoche(
+                children: [
+                  Row(
+                    children: [
+                      Semantics(
+                        button: true,
+                        label: 'Mon profil',
+                        child: Material(
+                          color: C.surface,
+                          shape: const StadiumBorder(),
+                          child: InkWell(
+                            customBorder: const StadiumBorder(),
+                            onTap: () => s.allerOnglet(3),
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(4, 4, 14, 4),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  PhotoRonde(photo: s.photo, initiales: s.moi.initiales, taille: 32),
+                                  const SizedBox(width: 8),
+                                  Text(s.prenom, style: T.gras.copyWith(color: C.encre)),
+                                ],
                               ),
                             ),
                           ),
                         ),
-                        const Spacer(),
-                        const BasculeMode(conducteur: false),
-                      ],
-                    ),
-                    const SizedBox(height: 22),
-                    Semantics(
-                      header: true,
-                      child: Text(
-                        'Ne y windiga, ${s.prenom} ! Envie de vous déplacer quelque part ?',
-                        style: T.titre(26, color: Colors.white).copyWith(height: 1.1),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    Pastille(
-                      fcfa(s.solde),
-                      icon: Icons.account_balance_wallet_outlined,
-                      fond: C.encre,
-                      texte: C.etoile,
-                      onTap: () => ouvrir(context, const PortefeuilleEcran()),
-                    ),
-                  ],
-                ),
-              ),
-              // La barre de recherche chevauche le bas de l'en-tête.
-              Transform.translate(
-                offset: const Offset(0, -30),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Semantics(
-                    button: true,
-                    label: 'Où allez-vous ?',
-                    excludeSemantics: true,
-                    child: Material(
-                      color: Colors.transparent,
-                      child: Ink(
-                        decoration: ShapeDecoration(
-                          color: C.surface,
-                          shape: const StadiumBorder(side: BorderSide(color: C.trait, width: 1.5)),
-                          shadows: ombreDouce,
-                        ),
-                        child: InkWell(
-                          customBorder: const StadiumBorder(),
-                          onTap: () => ouvrir(context, const ItineraireEcran()),
-                          child: const SizedBox(
-                            height: 60,
-                            child: Row(
-                              children: [
-                                SizedBox(width: 20),
-                                Icon(Icons.place_rounded, color: C.laterite),
-                                SizedBox(width: 10),
-                                Text('Où allez-vous ?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
+                      const Spacer(),
+                      const BasculeMode(conducteur: false),
+                    ],
+                  ),
+                  const SizedBox(height: 22),
+                  Semantics(
+                    header: true,
+                    child: Text(
+                      'Ne y windiga, ${s.prenom} ! Envie de vous déplacer quelque part ?',
+                      style: T.titre(26, color: Colors.white).copyWith(height: 1.1),
                     ),
                   ),
-                ),
+                  const SizedBox(height: 12),
+                  Pastille(
+                    fcfa(s.solde),
+                    icon: Icons.account_balance_wallet_outlined,
+                    fond: C.encre,
+                    texte: C.etoile,
+                    onTap: () => ouvrir(context, const PortefeuilleEcran()),
+                  ),
+                ],
+                // La barre de recherche est logée dans l'encoche de l'en-tête.
+                barre: BarreAction('Où allez-vous ?', onTap: () => ouvrir(context, const ItineraireEcran())),
               ),
+              const SizedBox(height: 14),
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
                 child: Column(

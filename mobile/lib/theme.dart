@@ -49,12 +49,7 @@ abstract final class T {
     color: color,
   );
 
-  static const corps = TextStyle(
-    fontFamily: 'Figtree',
-    fontSize: 16,
-    height: 1.35,
-    color: C.encre,
-  );
+  static const corps = TextStyle(fontFamily: 'Figtree', fontSize: 16, height: 1.35, color: C.encre);
   static const petit = TextStyle(fontSize: 14);
   static const mini = TextStyle(fontSize: 13);
   static const gras = TextStyle(fontWeight: FontWeight.w700);
@@ -76,11 +71,7 @@ ThemeData construireTheme() {
     splashFactory: InkRipple.splashFactory,
   );
   return base.copyWith(
-    textTheme: base.textTheme.apply(
-      bodyColor: C.encre,
-      displayColor: C.encre,
-      fontFamily: 'Figtree',
-    ),
+    textTheme: base.textTheme.apply(bodyColor: C.encre, displayColor: C.encre, fontFamily: 'Figtree'),
     sliderTheme: const SliderThemeData(
       activeTrackColor: C.laterite,
       inactiveTrackColor: C.trait,
@@ -99,14 +90,9 @@ ThemeData construireTheme() {
     ),
     dialogTheme: const DialogThemeData(
       backgroundColor: C.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.all(Radius.circular(24)),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(24))),
     ),
-    bottomSheetTheme: const BottomSheetThemeData(
-      backgroundColor: C.surface,
-      showDragHandle: true,
-    ),
+    bottomSheetTheme: const BottomSheetThemeData(backgroundColor: C.surface, showDragHandle: true),
     textSelectionTheme: const TextSelectionThemeData(cursorColor: C.vert),
   );
 }

@@ -2,20 +2,7 @@
 library;
 
 const _jours = ['lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.'];
-const _mois = [
-  'janv.',
-  'févr.',
-  'mars',
-  'avr.',
-  'mai',
-  'juin',
-  'juil.',
-  'août',
-  'sept.',
-  'oct.',
-  'nov.',
-  'déc.',
-];
+const _mois = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
 const _moisLong = [
   'janvier',
   'février',
@@ -52,19 +39,16 @@ String fcfa(int n) => '${milliers(n)}${nbsp}F';
 /// Montant signé pour les historiques : « + 5 000 F » ou « − 2 500 F ».
 String fcfaSigne(int n) => '${n < 0 ? '−' : '+'} ${fcfa(n.abs())}';
 
-String capitaliser(String s) =>
-    s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+String capitaliser(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
 
 /// 7:00 → « 7 h 00 ».
-String heure(DateTime d) =>
-    '${d.hour} h ${d.minute.toString().padLeft(2, '0')}';
+String heure(DateTime d) => '${d.hour} h ${d.minute.toString().padLeft(2, '0')}';
 
 /// 7:00 → « 7 h », 7:15 → « 7 h 15 ».
 String heureCourte(DateTime d) => d.minute == 0 ? '${d.hour} h' : heure(d);
 
 /// « jeu. 26 nov. »
-String jourCourt(DateTime d) =>
-    '${_jours[d.weekday - 1]} ${d.day} ${_mois[d.month - 1]}';
+String jourCourt(DateTime d) => '${_jours[d.weekday - 1]} ${d.day} ${_mois[d.month - 1]}';
 
 /// « 26 nov. »
 String dateCourte(DateTime d) => '${d.day} ${_mois[d.month - 1]}';
@@ -73,13 +57,11 @@ String dateCourte(DateTime d) => '${d.day} ${_mois[d.month - 1]}';
 String dateLongue(DateTime d) => '${d.day} ${_moisLong[d.month - 1]}';
 
 /// « Novembre » ou « Novembre 2026 ».
-String moisAnnee(DateTime d, {bool annee = false}) =>
-    capitaliser(_moisLong[d.month - 1]) + (annee ? ' ${d.year}' : '');
+String moisAnnee(DateTime d, {bool annee = false}) => capitaliser(_moisLong[d.month - 1]) + (annee ? ' ${d.year}' : '');
 
 DateTime jour(DateTime d) => DateTime(d.year, d.month, d.day);
 
-int ecartJours(DateTime d, DateTime maintenant) =>
-    jour(d).difference(jour(maintenant)).inDays;
+int ecartJours(DateTime d, DateTime maintenant) => jour(d).difference(jour(maintenant)).inDays;
 
 /// « Aujourd'hui », « Demain », « Hier » ou « Jeu. 26 nov. ».
 String jourRelatif(DateTime d, DateTime maintenant) {
@@ -103,8 +85,7 @@ String jourRelatifComplet(DateTime d, DateTime maintenant) {
 }
 
 /// Libellé court pour un horodatage d'opération : « 4 h 12 » ou « 12 nov. ».
-String quand(DateTime d, DateTime maintenant) =>
-    ecartJours(d, maintenant) == 0 ? heure(d) : dateCourte(d);
+String quand(DateTime d, DateTime maintenant) => ecartJours(d, maintenant) == 0 ? heure(d) : dateCourte(d);
 
 /// Durée : 90 min → « 1 h 30 ».
 String duree(Duration d) {

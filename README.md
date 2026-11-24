@@ -75,9 +75,30 @@ polices Figtree et Bricolage Grotesque, en-tête « piste », billet) :
   en cours, SOS, notation, signalement.
 - **Messages, notifications et profil**.
 - **Portefeuille** : solde, dépôt, historique, parrainage, retrait, réclamation.
-- **Conducteur** : inscription (documents, validation, abonnement), publication
-  avec prix plafonné, demandes, codes ou QR au départ, trajet en cours, gains,
-  portefeuille conducteur, abonnement, annulation.
+- **Conducteur, en 5 onglets** (inspiré de CityGo, aux couleurs de
+  FasoCovoit) :
+  - « Accueil » : « Bonjour X », une barre « Proposer un covoit’ » et « Mes
+    actions » (activer son compte, documents à renouveler, demandes à traiter,
+    départs du jour, trajet en cours).
+  - « Covoit’ » : les nouvelles demandes (réservations et alertes de course),
+    à ouvrir, accepter, refuser ou écarter, « Tout effacer », puis les
+    passagers inscrits qui cherchent un trajet.
+  - « Proposer » : ses covoit’ publiés (ponctuel ou régulier), à ouvrir ou à
+    supprimer après confirmation, et « Proposer un trajet » en deux écrans
+    (« Nouveau covoit’ » : adresses, ponctuel ou régulier, jours, date, heure,
+    retour ; puis « Places et prix »).
+  - « Gains » : solde, retrait, gains en attente et historique.
+  - « Menu » : profil, niveau, porte-monnaie, covoit’ passés, taux
+    d’annulation, ma voiture (modèle, couleur, plaque), mes documents
+    (vérifiés, à renouveler, expirés), réglages (paiement en ligne uniquement,
+    sourdine), abonnement, aide, retour en mode passager.
+  Au premier passage, un écran « Mode conducteur » rappelle ce qu'est le
+  covoiturage. Restent : inscription (documents, validation, abonnement),
+  codes ou QR au départ, trajet en cours, annulation.
+- **Style à encoches** (repris de CityGo) : en-tête coloré creusé d'une encoche
+  arrondie où se loge la barre d'action, barre d'onglets flottante avec une
+  pastille sur l'onglet choisi, cartes avec une languette à droite pour les
+  ouvrir.
 - **Départ et destination** : le conducteur (« D'où partez-vous ? », « Où
   allez-vous ? ») comme le passager choisissent leurs lieux dans une recherche
   (quartiers de Ouaga, Koudougou, Bobo-Dioulasso) ou saisissent un lieu absent
@@ -144,9 +165,8 @@ la barre du navigateur.
 - Au premier trajet publié, un passager fictif attend aussi le long de la route,
   à l'heure du passage : l'alerte de course s'affiche. Des passagers de
   démonstration (Fatou S., Salam O., Ali K.) cherchent déjà un trajet.
-- Côté passager, « Simuler la réponse d'un conducteur » (dans « Mes trajets »)
-  fait accepter la demande par un conducteur, qui vient le prendre à son adresse
-  à la date et à l'heure choisies.
+- Côté passager, pendant « Recherche en cours… », une acceptation de conducteur
+  fictif arrive toutes les 3 secondes.
 
 Le code est organisé ainsi dans `mobile/lib` : `model.dart` (règles et données
 en mémoire), `ui.dart` et `theme.dart` (composants du thème), `screens/`

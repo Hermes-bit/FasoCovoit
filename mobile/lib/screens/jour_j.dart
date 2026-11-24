@@ -30,7 +30,8 @@ class _EnRouteEcranState extends State<EnRouteEcran> {
     final t = widget.reservation.trajet;
     Clipboard.setData(
       ClipboardData(
-        text: 'Je suis en route avec FasoCovoit : ${t.titreLong}, arrivée vers ${heure(t.heureArrivee)}. '
+        text:
+            'Je suis en route avec FasoCovoit : ${t.titreLong}, arrivée vers ${heure(t.heureArrivee)}. '
             'Véhicule ${t.conducteur.vehicule} ${t.conducteur.plaque}.',
       ),
     );
@@ -179,10 +180,7 @@ class _EnRouteEcranState extends State<EnRouteEcran> {
         Container(
           width: 10,
           height: 10,
-          decoration: BoxDecoration(
-            color: _partage ? C.vert : C.trait,
-            shape: BoxShape.circle,
-          ),
+          decoration: BoxDecoration(color: _partage ? C.vert : C.trait, shape: BoxShape.circle),
         ),
         const SizedBox(width: 8),
         Expanded(
@@ -254,7 +252,9 @@ class SosEcran extends StatelessWidget {
       children: [
         const Icon(Icons.check_rounded, color: Colors.white, size: 22),
         const SizedBox(width: 12),
-        Expanded(child: Text(texte, style: const TextStyle(color: Colors.white))),
+        Expanded(
+          child: Text(texte, style: const TextStyle(color: Colors.white)),
+        ),
       ],
     );
     return Scaffold(
@@ -276,10 +276,7 @@ class SosEcran extends StatelessWidget {
             const SizedBox(height: 18),
             Semantics(
               liveRegion: true,
-              child: Text(
-                "L'équipe vous rappelle dans moins de 5 minutes",
-                style: T.titre(36, color: Colors.white),
-              ),
+              child: Text("L'équipe vous rappelle dans moins de 5 minutes", style: T.titre(36, color: Colors.white)),
             ),
             const SizedBox(height: 18),
             Container(

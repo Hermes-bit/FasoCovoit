@@ -7,6 +7,7 @@ import '../theme.dart';
 import '../ui.dart';
 import 'compte.dart';
 import 'devenir.dart';
+import 'espace_conducteur.dart';
 import 'passager.dart';
 import 'portefeuille.dart';
 
@@ -42,7 +43,10 @@ class MessagesOnglet extends StatelessWidget {
       children: [
         const Piste(
           paddingBas: 30,
-          children: [Titre('Messages'), Text('Votre numéro reste masqué', style: T.petit)],
+          children: [
+            Titre('Messages'),
+            Text('Votre numéro reste masqué', style: T.petit),
+          ],
         ),
         Zone(
           padding: const EdgeInsets.fromLTRB(20, 6, 20, 20),
@@ -87,7 +91,11 @@ class MessagesOnglet extends StatelessWidget {
                                     decoration: const BoxDecoration(color: C.vert, shape: BoxShape.circle),
                                     child: Text(
                                       '${c.nonLus}',
-                                      style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w800,
+                                      ),
                                     ),
                                   ),
                               ],
@@ -183,8 +191,7 @@ class _ConversationEcranState extends State<ConversationEcran> {
             controller: _defil,
             padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
             children: [
-              if (c.messages.isEmpty)
-                const Doux('Aucun message pour l’instant.', align: TextAlign.center),
+              if (c.messages.isEmpty) const Doux('Aucun message pour l’instant.', align: TextAlign.center),
               for (var i = 0; i < c.messages.length; i++) ...[
                 if (i == 0 || ecartJours(c.messages[i].date, c.messages[i - 1].date) != 0)
                   Padding(
@@ -440,9 +447,7 @@ class ProfilOnglet extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(20, 6, 20, 20),
           children: [
             Carte.sombre(
-              onTap: () => s.estConducteur
-                  ? s.basculerMode(Mode.conducteur)
-                  : ouvrir(context, const DevenirIntroEcran()),
+              onTap: () => s.estConducteur ? entrerModeConducteur(context) : ouvrir(context, const DevenirIntroEcran()),
               child: Row(
                 children: [
                   const Icon(Icons.directions_car_outlined, color: C.etoile, size: 28),
@@ -494,7 +499,11 @@ class ProfilOnglet extends StatelessWidget {
             ),
             ListeCarte(
               children: [
-                ligne(Icons.description_outlined, "Règles d'annulation", onTap: () => ouvrir(context, const ReglesAnnulationEcran())),
+                ligne(
+                  Icons.description_outlined,
+                  "Règles d'annulation",
+                  onTap: () => ouvrir(context, const ReglesAnnulationEcran()),
+                ),
                 ligne(
                   Icons.verified_user_outlined,
                   'Conditions et confidentialité',
@@ -509,15 +518,19 @@ class ProfilOnglet extends StatelessWidget {
             ),
             ListeCarte(
               children: [
-                ligne(Icons.logout_rounded, 'Se déconnecter', onTap: () async {
-                  final ok = await confirmer(
-                    context,
-                    titre: 'Se déconnecter ?',
-                    texte: 'Vous pourrez revenir avec votre numéro et un code SMS.',
-                    oui: 'Se déconnecter',
-                  );
-                  if (ok) s.deconnecter();
-                }),
+                ligne(
+                  Icons.logout_rounded,
+                  'Se déconnecter',
+                  onTap: () async {
+                    final ok = await confirmer(
+                      context,
+                      titre: 'Se déconnecter ?',
+                      texte: 'Vous pourrez revenir avec votre numéro et un code SMS.',
+                      oui: 'Se déconnecter',
+                    );
+                    if (ok) s.deconnecter();
+                  },
+                ),
                 ligne(
                   Icons.delete_outline_rounded,
                   'Supprimer mon compte',
@@ -541,10 +554,22 @@ class PageTexteEcran extends StatelessWidget {
   const PageTexteEcran.conditions({super.key})
     : titre = 'Conditions et confidentialité',
       paragraphes = const [
-        ('Ce que nous gardons', 'Votre numéro, votre nom, votre photo et votre contact d’urgence. Vos documents de conducteur sont stockés dans un espace privé, visible seulement par l’équipe de validation.'),
-        ('Ce que voient les autres', 'Votre prénom, l’initiale de votre nom, votre photo et votre note. Jamais votre numéro : les appels et messages passent par l’application.'),
-        ('Prix plafonnés', 'Le conducteur partage ses frais de carburant, il ne fait pas de bénéfice. Les plafonds sont fixés par l’équipe.'),
-        ('Prototype', 'Cette version est une démonstration : aucun paiement, SMS, appel ou alerte n’est réellement envoyé. Ne saisissez pas de données personnelles réelles.'),
+        (
+          'Ce que nous gardons',
+          'Votre numéro, votre nom, votre photo et votre contact d’urgence. Vos documents de conducteur sont stockés dans un espace privé, visible seulement par l’équipe de validation.',
+        ),
+        (
+          'Ce que voient les autres',
+          'Votre prénom, l’initiale de votre nom, votre photo et votre note. Jamais votre numéro : les appels et messages passent par l’application.',
+        ),
+        (
+          'Prix plafonnés',
+          'Le conducteur partage ses frais de carburant, il ne fait pas de bénéfice. Les plafonds sont fixés par l’équipe.',
+        ),
+        (
+          'Prototype',
+          'Cette version est une démonstration : aucun paiement, SMS, appel ou alerte n’est réellement envoyé. Ne saisissez pas de données personnelles réelles.',
+        ),
       ];
 
   const PageTexteEcran.charte({super.key})
@@ -570,7 +595,11 @@ class PageTexteEcran extends StatelessWidget {
             Carte(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [Text(t, style: T.gras), const SizedBox(height: 6), Doux(p, taille: 14)],
+                children: [
+                  Text(t, style: T.gras),
+                  const SizedBox(height: 6),
+                  Doux(p, taille: 14),
+                ],
               ),
             ),
         ],

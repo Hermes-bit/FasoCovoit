@@ -44,55 +44,52 @@ Future<ChoixPhoto?> demanderPhoto(
   final choix = !galerie && !peutRetirer
       ? 'appareil'
       : await showModalBottomSheet<String>(
-    context: context,
-    builder: (c) => SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(titre, style: T.titre(22)),
-            const SizedBox(height: 12),
-            ListeCarte(
-              children: [
-                LigneListe(
-                  onTap: () => Navigator.pop(c, 'appareil'),
-                  children: const [
-                    Icon(Icons.photo_camera_outlined, size: 22),
-                    Bloc('Prendre une photo', "Avec l'appareil photo du téléphone"),
-                  ],
-                ),
-                if (galerie)
-                  LigneListe(
-                    onTap: () => Navigator.pop(c, 'galerie'),
-                    children: const [
-                      Icon(Icons.photo_library_outlined, size: 22),
-                      Bloc('Importer une photo', 'Depuis la galerie ou les fichiers'),
+          context: context,
+          builder: (c) => SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(titre, style: T.titre(22)),
+                  const SizedBox(height: 12),
+                  ListeCarte(
+                    children: [
+                      LigneListe(
+                        onTap: () => Navigator.pop(c, 'appareil'),
+                        children: const [
+                          Icon(Icons.photo_camera_outlined, size: 22),
+                          Bloc('Prendre une photo', "Avec l'appareil photo du téléphone"),
+                        ],
+                      ),
+                      if (galerie)
+                        LigneListe(
+                          onTap: () => Navigator.pop(c, 'galerie'),
+                          children: const [
+                            Icon(Icons.photo_library_outlined, size: 22),
+                            Bloc('Importer une photo', 'Depuis la galerie ou les fichiers'),
+                          ],
+                        ),
+                      if (peutRetirer)
+                        LigneListe(
+                          onTap: () => Navigator.pop(c, 'retirer'),
+                          children: const [
+                            Icon(Icons.delete_outline_rounded, size: 22, color: C.sos),
+                            Bloc('Retirer la photo'),
+                          ],
+                        ),
                     ],
                   ),
-                if (peutRetirer)
-                  LigneListe(
-                    onTap: () => Navigator.pop(c, 'retirer'),
-                    children: const [
-                      Icon(Icons.delete_outline_rounded, size: 22, color: C.sos),
-                      Bloc('Retirer la photo'),
-                    ],
-                  ),
-              ],
+                ],
+              ),
             ),
-          ],
-        ),
-      ),
-    ),
-  );
+          ),
+        );
   if (choix == null || !context.mounted) return null;
   if (choix == 'retirer') return const ChoixPhoto.retirer();
   try {
-    final octets = await preneurPhoto(
-      choix == 'appareil' ? SourcePhoto.appareil : SourcePhoto.galerie,
-      selfie: selfie,
-    );
+    final octets = await preneurPhoto(choix == 'appareil' ? SourcePhoto.appareil : SourcePhoto.galerie, selfie: selfie);
     if (octets == null || octets.isEmpty) return null;
     return ChoixPhoto.photo(octets);
   } on PlatformException catch (e) {

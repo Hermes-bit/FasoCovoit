@@ -7,8 +7,7 @@ import '../ui.dart';
 
 const _v2 = Pastille('Bientôt · version 2', fond: C.etoile, texte: C.encre);
 
-void _bientot(BuildContext context) =>
-    message(context, 'Le transport de colis arrive en version 2.');
+void _bientot(BuildContext context) => message(context, 'Le transport de colis arrive en version 2.');
 
 // ---------------------------------------------------------------------------
 // 55 · Envoyer un colis
@@ -107,7 +106,11 @@ class _ColisEnvoyerEcranState extends State<ColisEnvoyerEcran> {
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [const Etiq('Contenu'), const SizedBox(height: 8), Champ(controller: _contenu, label: 'Contenu')],
+                  children: [
+                    const Etiq('Contenu'),
+                    const SizedBox(height: 8),
+                    Champ(controller: _contenu, label: 'Contenu'),
+                  ],
                 ),
               ),
               const SizedBox(width: 10),
@@ -143,9 +146,13 @@ class _ColisEnvoyerEcranState extends State<ColisEnvoyerEcran> {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    Expanded(child: Champ(controller: _nom, hauteur: 48, label: 'Nom du destinataire')),
+                    Expanded(
+                      child: Champ(controller: _nom, hauteur: 48, label: 'Nom du destinataire'),
+                    ),
                     const SizedBox(width: 8),
-                    Expanded(child: Champ(controller: _tel, hauteur: 48, label: 'Téléphone du destinataire')),
+                    Expanded(
+                      child: Champ(controller: _tel, hauteur: 48, label: 'Téléphone du destinataire'),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -173,15 +180,10 @@ class _ColisEnvoyerEcranState extends State<ColisEnvoyerEcran> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
-              children: [
-                Titre(fcfa(_tailles[_taille].$3)),
-                const Doux("Prix d'exemple"),
-              ],
+              children: [Titre(fcfa(_tailles[_taille].$3)), const Doux("Prix d'exemple")],
             ),
             const SizedBox(width: 12),
-            Expanded(
-              child: Btn('Trouver un conducteur', onPressed: () => ouvrir(context, const ColisSuiviEcran())),
-            ),
+            Expanded(child: Btn('Trouver un conducteur', onPressed: () => ouvrir(context, const ColisSuiviEcran()))),
           ],
         ),
       ),
@@ -199,11 +201,7 @@ class ColisSuiviEcran extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Ecran(
     children: [
-      const Barre(
-        titre: 'Colis CL-4KM7-PQ2',
-        sousTitre: 'Documents · Ouaga → Koudougou',
-        actions: [_v2],
-      ),
+      const Barre(titre: 'Colis CL-4KM7-PQ2', sousTitre: 'Documents · Ouaga → Koudougou', actions: [_v2]),
       Zone(
         gap: 14,
         children: [
@@ -212,7 +210,12 @@ class ColisSuiviEcran extends StatelessWidget {
               children: [
                 Etape(EtatEtape.fait, 'Colis créé et payé', 'Exemple · 1 000 F'),
                 Etape(EtatEtape.fait, 'Remis au conducteur', 'QR scanné par le conducteur · photo vérifiée'),
-                Etape(EtatEtape.encours, 'En route', 'Arrivée prévue vers 8 h 30 · suivi en direct', icone: Icons.directions_car_outlined),
+                Etape(
+                  EtatEtape.encours,
+                  'En route',
+                  'Arrivée prévue vers 8 h 30 · suivi en direct',
+                  icone: Icons.directions_car_outlined,
+                ),
                 Etape(EtatEtape.afaire, 'Livré au destinataire', 'Quand il donne son code au conducteur'),
               ],
             ),
@@ -235,7 +238,11 @@ class ColisSuiviEcran extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: BtnClair('Écrire au conducteur', icon: Icons.chat_bubble_outline_rounded, onPressed: () => _bientot(context)),
+                child: BtnClair(
+                  'Écrire au conducteur',
+                  icon: Icons.chat_bubble_outline_rounded,
+                  onPressed: () => _bientot(context),
+                ),
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -291,7 +298,10 @@ class _ColisConducteurEcranState extends State<ColisConducteurEcran> {
                   const Row(
                     children: [
                       Expanded(child: Text('Documents · taille S', style: T.gras)),
-                      Text('+ 1 000 F', style: TextStyle(fontWeight: FontWeight.w700, color: C.vertF)),
+                      Text(
+                        '+ 1 000 F',
+                        style: TextStyle(fontWeight: FontWeight.w700, color: C.vertF),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -320,7 +330,9 @@ class _ColisConducteurEcranState extends State<ColisConducteurEcran> {
                   if (_accepte == null)
                     Row(
                       children: [
-                        Expanded(child: BtnClair('Refuser', hauteur: 48, onPressed: () => setState(() => _accepte = false))),
+                        Expanded(
+                          child: BtnClair('Refuser', hauteur: 48, onPressed: () => setState(() => _accepte = false)),
+                        ),
                         const SizedBox(width: 8),
                         Expanded(child: Btn('Accepter', hauteur: 48, onPressed: () => setState(() => _accepte = true))),
                       ],
@@ -352,11 +364,23 @@ class _ColisConducteurEcranState extends State<ColisConducteurEcran> {
             Row(
               children: [
                 Expanded(
-                  child: Btn.lat('Scanner à la remise', icon: Icons.photo_camera_outlined, hauteur: 56, taille: 15, onPressed: () => _bientot(context)),
+                  child: Btn.lat(
+                    'Scanner à la remise',
+                    icon: Icons.photo_camera_outlined,
+                    hauteur: 56,
+                    taille: 15,
+                    onPressed: () => _bientot(context),
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Btn('Code du destinataire', icon: Icons.check_rounded, hauteur: 56, taille: 15, onPressed: () => _bientot(context)),
+                  child: Btn(
+                    'Code du destinataire',
+                    icon: Icons.check_rounded,
+                    hauteur: 56,
+                    taille: 15,
+                    onPressed: () => _bientot(context),
+                  ),
                 ),
               ],
             ),

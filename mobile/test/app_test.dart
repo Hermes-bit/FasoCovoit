@@ -6,6 +6,7 @@ import 'package:fasocovoit/model.dart';
 import 'package:fasocovoit/photo.dart';
 import 'package:fasocovoit/screens/compte.dart';
 import 'package:fasocovoit/screens/demande.dart';
+import 'package:fasocovoit/screens/espace_conducteur.dart';
 import 'package:fasocovoit/ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -127,12 +128,18 @@ void main() {
 
     await toucher(tester, find.text('Je propose mes trajets'));
     expect(s.mode, Mode.conducteur);
-    expect(find.text('Mode conducteur'), findsOneWidget);
+    // Première entrée : la fiche « Mode conducteur ».
+    expect(find.text('Le covoiturage, c’est :'), findsOneWidget);
+    await toucher(tester, bouton('J’ai compris'));
+    expect(find.text('Bonjour Hermès'), findsOneWidget);
     expect(find.text('Activez votre compte conducteur'), findsOneWidget);
-    // Les passagers inscrits sont déjà visibles.
+
+    // Les passagers inscrits sont déjà visibles dans « Covoit’ ».
+    await toucher(tester, find.text('Covoit’'));
     expect(find.textContaining('Passagers inscrits qui cherchent un trajet'), findsOneWidget);
     expect(find.text('Fatou S.'), findsOneWidget);
 
+    await toucher(tester, find.text('Accueil'));
     await toucher(tester, find.widgetWithText(Btn, 'Envoyer mes documents'));
     expect(find.text('0 document sur 6'), findsOneWidget);
   });
@@ -318,33 +325,46 @@ void main() {
     expect(s.estConducteur, isTrue);
     await toucher(tester, bouton('Publier mon premier trajet'));
 
-    expect(find.text('Publier un trajet'), findsOneWidget);
-    // Sans destination, on ne peut pas publier.
-    await toucher(tester, bouton('Publier le trajet'));
-    expect(s.trajetsPublies, isEmpty);
+    // « Nouveau covoit’ » : sans destination, pas d'étape suivante.
+    expect(find.text('Nouveau covoit’'), findsOneWidget);
+    expect(tester.widget<Btn>(bouton('Suivant')).onPressed, isNull);
 
     // Le conducteur cherche et choisit sa destination.
-    await toucher(tester, find.text('Où allez-vous ?'));
+    await toucher(tester, find.text('Arrivée'));
     await tester.enterText(find.byType(TextField), 'secteur');
     await tester.pumpAndSettle();
     await toucher(tester, find.text('Secteur 7'));
     expect(find.text('Koudougou, Secteur 7'), findsOneWidget);
     expect(find.textContaining('98 km'), findsOneWidget);
+    expect(find.text('Ponctuel'), findsOneWidget);
 
-    await toucher(tester, bouton('Publier le trajet'));
+    await toucher(tester, bouton('Suivant'));
+    expect(find.text('Places et prix'), findsOneWidget);
+    await toucher(tester, bouton('Publier'));
+    await toucher(tester, bouton('Valider le covoit’'));
+    expect(find.text('Trajet enregistré'), findsOneWidget);
+    await toucher(tester, bouton('Ok'));
 
     expect(s.mode, Mode.conducteur);
     expect(s.trajetsPublies, hasLength(1));
     expect(s.trajetsPublies.single.ligne.arrivee, lKoudS7);
-    expect(find.text('Bonjour Hermès'), findsOneWidget);
-    expect(find.text('1 demande à traiter'), findsOneWidget);
+    // Onglet « Proposer » : le covoit’ publié, avec une demande à traiter.
+    expect(s.onglet, 2);
+    expect(find.text('1 demande'), findsOneWidget);
 
-    // Des passagers attendent sur sa route : il est alerté et choisit.
+    // Onglet « Covoit’ » : les demandes, cartes à languette.
+    await toucher(tester, find.text('Covoit’'));
+    expect(find.text('Nouvelles demandes'), findsOneWidget);
+    final t = s.trajetsPublies.single;
+    // Rasmata a réservé : on confirme.
+    await toucher(tester, find.text('Rasmata Z.'));
+    await toucher(tester, bouton('Confirmer'));
+    expect(t.enAttente, isEmpty);
+    // Un passager attend sur la route : on prend la course.
     final avant = s.coursesPossibles.length;
     expect(avant, greaterThan(0));
-    expect(find.widgetWithText(Btn, 'Prendre la course'), findsNWidgets(avant));
-    await toucher(tester, find.widgetWithText(Btn, 'Prendre la course').first);
-    // Moins d'alertes : celle prise, et celles qui n'ont plus assez de places.
+    await toucher(tester, find.byType(CarteDemandeConducteur).first);
+    await toucher(tester, bouton('Confirmer'));
     expect(s.coursesPossibles.length, lessThan(avant));
     expect(find.textContaining('Course acceptée'), findsOneWidget);
   });

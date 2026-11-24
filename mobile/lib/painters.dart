@@ -22,23 +22,15 @@ Path etoilePath(double size) {
 }
 
 class Etoile extends StatelessWidget {
-  const Etoile({
-    super.key,
-    this.size = 18,
-    this.color = C.etoile,
-    this.contour,
-    this.epaisseur = 1.4,
-  });
+  const Etoile({super.key, this.size = 18, this.color = C.etoile, this.contour, this.epaisseur = 1.4});
   final double size;
   final Color? color;
   final Color? contour;
   final double epaisseur;
 
   @override
-  Widget build(BuildContext context) => CustomPaint(
-    size: Size.square(size),
-    painter: _EtoilePainter(color, contour, epaisseur),
-  );
+  Widget build(BuildContext context) =>
+      CustomPaint(size: Size.square(size), painter: _EtoilePainter(color, contour, epaisseur));
 }
 
 class _EtoilePainter extends CustomPainter {
@@ -64,8 +56,7 @@ class _EtoilePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_EtoilePainter old) =>
-      old.color != color || old.contour != contour;
+  bool shouldRepaint(_EtoilePainter old) => old.color != color || old.contour != contour;
 }
 
 /// Trait pointillé horizontal (la « piste » sous les en-têtes, la coupe du billet).
@@ -105,12 +96,7 @@ class _PointillesPainter extends CustomPainter {
     final longueur = vertical ? size.height : size.width;
     for (var x = 0.0; x < longueur; x += plein + vide) {
       final fin = math.min(x + plein, longueur);
-      canvas.drawRect(
-        vertical
-            ? Rect.fromLTRB(0, x, size.width, fin)
-            : Rect.fromLTRB(x, 0, fin, size.height),
-        paint,
-      );
+      canvas.drawRect(vertical ? Rect.fromLTRB(0, x, size.width, fin) : Rect.fromLTRB(x, 0, fin, size.height), paint);
     }
   }
 
@@ -168,10 +154,7 @@ class PaysagePainter extends CustomPainter {
     canvas.drawLine(const Offset(240, 222), const Offset(244, 252), ligne);
     canvas.drawLine(const Offset(247, 276), const Offset(252, 310), ligne);
     final arbre = Paint()..color = const Color(0xFF5E2A12);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(const Rect.fromLTWH(74, 120, 16, 70), const Radius.circular(6)),
-      arbre,
-    );
+    canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(74, 120, 16, 70), const Radius.circular(6)), arbre);
     canvas.drawOval(Rect.fromCenter(center: const Offset(82, 112), width: 80, height: 36), arbre);
     canvas.drawOval(Rect.fromCenter(center: const Offset(60, 122), width: 32, height: 18), arbre);
     canvas.drawOval(Rect.fromCenter(center: const Offset(106, 120), width: 36, height: 18), arbre);
@@ -354,7 +337,10 @@ class CarteTrajetPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(CarteTrajetPainter old) =>
-      old.progression != progression || old.villeArrivee != villeArrivee || old.villeDepart != villeDepart || old.voiture != voiture;
+      old.progression != progression ||
+      old.villeArrivee != villeArrivee ||
+      old.villeDepart != villeDepart ||
+      old.voiture != voiture;
 }
 
 // ---------------------------------------------------------------------------
@@ -406,7 +392,12 @@ class IllustrationCartePainter extends CustomPainter {
       ..strokeWidth = 5
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
-    canvas.drawPath(Path()..moveTo(22, 60)..quadraticBezierTo(70, 52, 128, 70), rue);
+    canvas.drawPath(
+      Path()
+        ..moveTo(22, 60)
+        ..quadraticBezierTo(70, 52, 128, 70),
+      rue,
+    );
     final pointilles = Path()
       ..moveTo(32, 86)
       ..cubicTo(52, 80, 62, 66, 78, 64)
@@ -448,9 +439,11 @@ class IllustrationRecherchePainter extends CustomPainter {
     canvas.scale(s);
     canvas.drawOval(const Rect.fromLTWH(30, 106, 96, 9), Paint()..color = C.sable2);
     // Téléphone et carte à l'écran.
-    final tel = Path()..addRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(24, 10, 58, 96), const Radius.circular(12)));
+    final tel = Path()
+      ..addRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(24, 10, 58, 96), const Radius.circular(12)));
     _remplir(canvas, tel, C.laterite);
-    final ecran = Path()..addRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(31, 20, 44, 76), const Radius.circular(6)));
+    final ecran = Path()
+      ..addRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(31, 20, 44, 76), const Radius.circular(6)));
     canvas.drawPath(ecran, Paint()..color = C.surface);
     canvas.save();
     canvas.clipPath(ecran);
@@ -458,8 +451,18 @@ class IllustrationRecherchePainter extends CustomPainter {
       ..color = C.etoile
       ..strokeWidth = 6
       ..style = PaintingStyle.stroke;
-    canvas.drawPath(Path()..moveTo(28, 40)..lineTo(80, 78), route);
-    canvas.drawPath(Path()..moveTo(50, 18)..lineTo(40, 98), route);
+    canvas.drawPath(
+      Path()
+        ..moveTo(28, 40)
+        ..lineTo(80, 78),
+      route,
+    );
+    canvas.drawPath(
+      Path()
+        ..moveTo(50, 18)
+        ..lineTo(40, 98),
+      route,
+    );
     canvas.restore();
     canvas.drawPath(ecran, _contour(2));
     // Loupe verte avec une voiture.
@@ -497,6 +500,243 @@ class IllustrationRecherchePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// Proposer un trajet : une tablette avec un itinéraire et une épingle.
+class IllustrationRoutePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final s = math.min(size.width / 150, size.height / 120);
+    canvas.save();
+    canvas.translate((size.width - 150 * s) / 2, (size.height - 120 * s) / 2);
+    canvas.scale(s);
+    canvas.drawOval(const Rect.fromLTWH(24, 106, 104, 9), Paint()..color = C.sable2);
+    canvas.save();
+    canvas.translate(75, 66);
+    canvas.rotate(-.12);
+    final cadre = Path()
+      ..addRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(-56, -36, 112, 72), const Radius.circular(9)));
+    _remplir(canvas, cadre, C.laterite);
+    final ecran = Path()
+      ..addRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(-48, -29, 96, 58), const Radius.circular(5)));
+    canvas.drawPath(ecran, Paint()..color = C.surface);
+    canvas.save();
+    canvas.clipPath(ecran);
+    final rue = Paint()
+      ..color = C.etoile
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 5;
+    canvas.drawLine(const Offset(-50, 10), const Offset(50, -25), rue);
+    canvas.drawLine(const Offset(-20, -32), const Offset(10, 32), rue);
+    final chemin = Path()
+      ..moveTo(-36, 20)
+      ..lineTo(-14, 4)
+      ..lineTo(4, 12)
+      ..lineTo(28, -12);
+    for (final m in chemin.computeMetrics()) {
+      for (var d = 0.0; d < m.length; d += 6) {
+        canvas.drawPath(m.extractPath(d, d + 3), _contour(2.6));
+      }
+    }
+    canvas.restore();
+    canvas.drawPath(ecran, _contour(2));
+    canvas.drawPath(_poly(const [Offset(-40, 24), Offset(-30, 14), Offset(-28, 26)]), Paint()..color = C.vert);
+    canvas.restore();
+    // Épingle verte.
+    final epingle = Path()
+      ..moveTo(112, 46)
+      ..cubicTo(104, 36, 98, 30, 98, 22)
+      ..arcToPoint(const Offset(126, 22), radius: const Radius.circular(14))
+      ..cubicTo(126, 30, 120, 36, 112, 46)
+      ..close();
+    _remplir(canvas, epingle, C.vert);
+    canvas.drawCircle(const Offset(112, 22), 5.5, Paint()..color = Colors.white);
+    canvas.drawCircle(const Offset(112, 22), 5.5, _contour(2));
+    _scintille(canvas, const Offset(18, 18), 7);
+    _scintille(canvas, const Offset(30, 28), 4, plein: true);
+    _scintille(canvas, const Offset(134, 96), 7);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// Gains : une carte et un porte-monnaie.
+class IllustrationPorteMonnaiePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final s = math.min(size.width / 150, size.height / 120);
+    canvas.save();
+    canvas.translate((size.width - 150 * s) / 2, (size.height - 120 * s) / 2);
+    canvas.scale(s);
+    canvas.drawOval(const Rect.fromLTWH(34, 106, 86, 8), Paint()..color = C.sable2);
+    canvas.save();
+    canvas.translate(78, 44);
+    canvas.rotate(.14);
+    final carte = Path()
+      ..addRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(-38, -24, 76, 48), const Radius.circular(7)));
+    _remplir(canvas, carte, C.vert);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(const Rect.fromLTWH(-30, -12, 14, 11), const Radius.circular(2)),
+      Paint()..color = C.etoile,
+    );
+    for (var i = 0; i < 4; i++) {
+      canvas.drawLine(Offset(-8 + i * 9.0, 4), Offset(-2 + i * 9.0, 4), _contour(2));
+    }
+    canvas.restore();
+    final portefeuille = Path()
+      ..moveTo(36, 60)
+      ..lineTo(112, 60)
+      ..quadraticBezierTo(118, 60, 118, 66)
+      ..lineTo(118, 100)
+      ..quadraticBezierTo(118, 106, 112, 106)
+      ..lineTo(42, 106)
+      ..quadraticBezierTo(36, 106, 36, 100)
+      ..close();
+    _remplir(canvas, portefeuille, C.laterite);
+    final rabat = Path()
+      ..moveTo(90, 72)
+      ..lineTo(120, 72)
+      ..lineTo(120, 90)
+      ..lineTo(90, 90)
+      ..close();
+    _remplir(canvas, rabat, C.lateriteF, trait: 2.2);
+    canvas.drawCircle(const Offset(100, 81), 4, Paint()..color = C.etoile);
+    canvas.drawCircle(const Offset(100, 81), 4, _contour(1.8));
+    _scintille(canvas, const Offset(126, 22), 7);
+    _scintille(canvas, const Offset(28, 98), 5, plein: true);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// Mode conducteur : un porte-clés et une clé.
+class IllustrationClesPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final s = math.min(size.width / 150, size.height / 120);
+    canvas.save();
+    canvas.translate((size.width - 150 * s) / 2, (size.height - 120 * s) / 2);
+    canvas.scale(s);
+    // Anneau.
+    canvas.drawCircle(const Offset(70, 26), 15, _contour(5));
+    canvas.drawCircle(
+      const Offset(70, 26),
+      15,
+      Paint()
+        ..color = C.sable2
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.5,
+    );
+    // Clé verte.
+    canvas.save();
+    canvas.translate(92, 52);
+    canvas.rotate(.6);
+    final lame = Path()
+      ..moveTo(10, -5)
+      ..lineTo(52, -5)
+      ..lineTo(52, 0)
+      ..lineTo(47, 0)
+      ..lineTo(44, 5)
+      ..lineTo(39, 0)
+      ..lineTo(35, 5)
+      ..lineTo(31, 0)
+      ..lineTo(10, 0)
+      ..close();
+    _remplir(canvas, lame, C.surface, trait: 2.2);
+    final tete = Path()..addOval(const Rect.fromLTWH(-16, -16, 30, 30));
+    _remplir(canvas, tete, C.vert);
+    canvas.drawCircle(const Offset(-6, -1), 4, Paint()..color = C.surface);
+    canvas.drawCircle(const Offset(-6, -1), 4, _contour(1.8));
+    canvas.restore();
+    // Télécommande latérite.
+    canvas.save();
+    canvas.translate(58, 72);
+    canvas.rotate(-.22);
+    final boitier = Path()
+      ..addRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(-24, -34, 48, 68), const Radius.circular(16)));
+    _remplir(canvas, boitier, C.laterite);
+    for (final (y, couleur) in const [(-14.0, C.etoile), (12.0, C.vert)]) {
+      canvas.drawCircle(Offset(0, y), 9, Paint()..color = couleur);
+      canvas.drawCircle(Offset(0, y), 9, _contour(2));
+    }
+    canvas.restore();
+    _scintille(canvas, const Offset(124, 20), 8);
+    _scintille(canvas, const Offset(112, 104), 5, plein: true);
+    _scintille(canvas, const Offset(24, 40), 6);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// « Ma voiture » : une berline de trois quarts, à la couleur choisie.
+class VoiturePainter extends CustomPainter {
+  VoiturePainter(this.couleur);
+  final Color couleur;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final s = math.min(size.width / 160, size.height / 100);
+    canvas.save();
+    canvas.translate((size.width - 160 * s) / 2, (size.height - 100 * s) / 2);
+    canvas.scale(s);
+    canvas.drawOval(const Rect.fromLTWH(14, 82, 134, 12), Paint()..color = C.sable2);
+    final caisse = Path()
+      ..moveTo(14, 70)
+      ..lineTo(14, 56)
+      ..quadraticBezierTo(16, 46, 30, 44)
+      ..lineTo(48, 42)
+      ..lineTo(66, 24)
+      ..quadraticBezierTo(70, 20, 78, 20)
+      ..lineTo(110, 20)
+      ..quadraticBezierTo(118, 20, 124, 28)
+      ..lineTo(134, 42)
+      ..quadraticBezierTo(148, 44, 148, 56)
+      ..lineTo(148, 70)
+      ..quadraticBezierTo(148, 76, 142, 76)
+      ..lineTo(20, 76)
+      ..quadraticBezierTo(14, 76, 14, 70)
+      ..close();
+    _remplir(canvas, caisse, couleur);
+    final vitres = Paint()..color = const Color(0xFFCFE6F5);
+    final avant = Path()
+      ..moveTo(56, 42)
+      ..lineTo(70, 28)
+      ..lineTo(90, 28)
+      ..lineTo(90, 42)
+      ..close();
+    final arriere = Path()
+      ..moveTo(96, 28)
+      ..lineTo(112, 28)
+      ..quadraticBezierTo(116, 28, 120, 34)
+      ..lineTo(126, 42)
+      ..lineTo(96, 42)
+      ..close();
+    for (final v in [avant, arriere]) {
+      canvas.drawPath(v, vitres);
+      canvas.drawPath(v, _contour(2));
+    }
+    canvas.drawLine(const Offset(92, 46), const Offset(92, 72), _contour(1.6));
+    for (final x in const [44.0, 120.0]) {
+      canvas.drawCircle(Offset(x, 76), 12, Paint()..color = C.encre);
+      canvas.drawCircle(Offset(x, 76), 5, Paint()..color = const Color(0xFFBFC3C7));
+    }
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(const Rect.fromLTWH(140, 52, 8, 6), const Radius.circular(2)),
+      Paint()..color = C.etoile,
+    );
+    _scintille(canvas, const Offset(150, 14), 6);
+    _scintille(canvas, const Offset(22, 26), 4, plein: true);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(VoiturePainter old) => old.couleur != couleur;
 }
 
 /// Fond discret de courbes de niveau (accueil).

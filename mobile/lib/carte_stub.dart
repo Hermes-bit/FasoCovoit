@@ -9,5 +9,4 @@ Widget vueCarte({required String cle, required String options, required void Fun
 Future<String> suggestions(String cle, String texte) =>
     Future.error(UnsupportedError('Recherche Google réservée au Web'));
 
-Future<String> details(String cle, String id) =>
-    Future.error(UnsupportedError('Recherche Google réservée au Web'));
+Future<String> details(String cle, String id) => Future.error(UnsupportedError('Recherche Google réservée au Web'));

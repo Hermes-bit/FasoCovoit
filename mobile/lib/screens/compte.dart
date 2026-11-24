@@ -8,6 +8,7 @@ import '../painters.dart';
 import '../photo.dart';
 import '../theme.dart';
 import '../ui.dart';
+import 'espace_conducteur.dart';
 
 /// 01 · Bienvenue
 class BienvenueEcran extends StatelessWidget {
@@ -73,10 +74,7 @@ class BienvenueEcran extends StatelessWidget {
               children: [
                 Btn('Commencer', onPressed: () => ouvrir(context, const NumeroEcran(nouveau: true))),
                 const SizedBox(height: 12),
-                BtnClair(
-                  "J'ai déjà un compte",
-                  onPressed: () => ouvrir(context, const NumeroEcran(nouveau: false)),
-                ),
+                BtnClair("J'ai déjà un compte", onPressed: () => ouvrir(context, const NumeroEcran(nouveau: false))),
                 const SizedBox(height: 12),
                 const BoutonGoogle(),
               ],
@@ -607,12 +605,7 @@ class BoutonPhotoProfil extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = AppScope.of(context);
     Future<void> changer() async {
-      final choix = await demanderPhoto(
-        context,
-        titre: 'Photo de profil',
-        selfie: true,
-        peutRetirer: s.photo != null,
-      );
+      final choix = await demanderPhoto(context, titre: 'Photo de profil', selfie: true, peutRetirer: s.photo != null);
       if (choix == null) return;
       s.majPhoto(choix.octets);
     }
@@ -638,11 +631,7 @@ class BoutonPhotoProfil extends StatelessWidget {
             else
               CustomPaint(
                 painter: _CerclePointille(),
-                child: SizedBox(
-                  width: taille,
-                  height: taille,
-                  child: const Icon(Icons.add_a_photo_outlined, size: 30),
-                ),
+                child: SizedBox(width: taille, height: taille, child: const Icon(Icons.add_a_photo_outlined, size: 30)),
               ),
             Positioned(
               right: -2,
@@ -781,10 +770,7 @@ class _UrgenceEcranState extends State<UrgenceEcran> {
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: [
-                  for (final l in _liens)
-                    Puce(l, on: _lien == l, onTap: () => setState(() => _lien = l)),
-                ],
+                children: [for (final l in _liens) Puce(l, on: _lien == l, onTap: () => setState(() => _lien = l))],
               ),
             ],
           ),
@@ -827,7 +813,12 @@ class ChoixEspaceEcran extends StatelessWidget {
       label: '$titre. $sous',
       excludeSemantics: true,
       child: Carte(
-        onTap: () => s.choisirEspace(espace),
+        onTap: () {
+          final nav = Navigator.of(context);
+          s.choisirEspace(espace);
+          // Première entrée côté conducteur : la fiche « Mode conducteur ».
+          if (espace == Mode.conducteur) presenterModeConducteur(nav, s);
+        },
         padding: const EdgeInsets.all(18),
         child: Row(
           children: [
@@ -917,7 +908,8 @@ class _SupprimerEcranState extends State<SupprimerEcran> {
     final ok = await confirmer(
       context,
       titre: 'Supprimer définitivement ?',
-      texte: 'Un code SMS vous sera demandé pour confirmer. Dans ce prototype, le compte est '
+      texte:
+          'Un code SMS vous sera demandé pour confirmer. Dans ce prototype, le compte est '
           'effacé de la session ; le compte de démonstration est remis à zéro.',
       oui: 'Supprimer',
       non: 'Garder mon compte',
@@ -974,7 +966,8 @@ class _SupprimerEcranState extends State<SupprimerEcran> {
                           children: [
                             TextSpan(text: 'Gardé puis effacé\n', style: T.gras),
                             TextSpan(
-                              text: 'Paiements (durée légale comptable), signalements (1 an), pour la sécurité et la loi.',
+                              text:
+                                  'Paiements (durée légale comptable), signalements (1 an), pour la sécurité et la loi.',
                               style: TextStyle(fontSize: 14, color: C.doux),
                             ),
                           ],

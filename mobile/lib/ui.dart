@@ -83,10 +83,7 @@ class Piste extends StatelessWidget {
           left: 20,
           right: 20,
           bottom: 24,
-          child: Opacity(
-            opacity: .55,
-            child: const Pointilles(color: Colors.white, epaisseur: 3, plein: 14, vide: 12),
-          ),
+          child: Opacity(opacity: .55, child: const Pointilles(color: Colors.white, epaisseur: 3, plein: 14, vide: 12)),
         ),
         Positioned(
           left: 0,
@@ -111,14 +108,7 @@ const ombreDouce = [BoxShadow(color: Color(0x1A2A1A12), blurRadius: 18, offset: 
 
 /// Barre claire avec retour, titre et sous-titre.
 class Barre extends StatelessWidget {
-  const Barre({
-    super.key,
-    required this.titre,
-    this.sousTitre,
-    this.actions = const [],
-    this.leading,
-    this.onRetour,
-  });
+  const Barre({super.key, required this.titre, this.sousTitre, this.actions = const [], this.leading, this.onRetour});
   final String titre;
   final String? sousTitre;
   final List<Widget> actions;
@@ -150,11 +140,7 @@ class Barre extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(titre, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
-                if (sousTitre != null)
-                  Opacity(
-                    opacity: .85,
-                    child: Text(sousTitre!, style: T.mini),
-                  ),
+                if (sousTitre != null) Opacity(opacity: .85, child: Text(sousTitre!, style: T.mini)),
               ],
             ),
           ),
@@ -218,10 +204,7 @@ class Zone extends StatelessWidget {
 }
 
 List<Widget> espacer(List<Widget> items, double gap) => [
-  for (var i = 0; i < items.length; i++) ...[
-    if (i > 0) SizedBox(height: gap, width: gap),
-    items[i],
-  ],
+  for (var i = 0; i < items.length; i++) ...[if (i > 0) SizedBox(height: gap, width: gap), items[i]],
 ];
 
 /// Pied fixe clair (bouton principal en bas d'écran).
@@ -258,16 +241,12 @@ class Carte extends StatelessWidget {
   });
 
   /// Carte sélectionnée : bord vert épais.
-  const Carte.sel({
-    super.key,
-    required this.child,
-    this.padding = const EdgeInsets.all(16),
-    this.onTap,
-  }) : couleur = C.surface,
-       bord = C.vert,
-       epaisseur = 2.5,
-       rayon = 22,
-       pointillee = false;
+  const Carte.sel({super.key, required this.child, this.padding = const EdgeInsets.all(16), this.onTap})
+    : couleur = C.surface,
+      bord = C.vert,
+      epaisseur = 2.5,
+      rayon = 22,
+      pointillee = false;
 
   /// Carte sombre (encre).
   const Carte.sombre({
@@ -297,14 +276,15 @@ class Carte extends StatelessWidget {
     if (sombre) {
       contenu = DefaultTextStyle.merge(
         style: const TextStyle(color: Colors.white),
-        child: IconTheme.merge(data: const IconThemeData(color: Colors.white), child: contenu),
+        child: IconTheme.merge(
+          data: const IconThemeData(color: Colors.white),
+          child: contenu,
+        ),
       );
     }
     final forme = RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(rayon),
-      side: epaisseur > 0 && !pointillee
-          ? BorderSide(color: bord, width: epaisseur)
-          : BorderSide.none,
+      side: epaisseur > 0 && !pointillee ? BorderSide(color: bord, width: epaisseur) : BorderSide.none,
     );
     Widget carte = Material(
       color: couleur,
@@ -313,10 +293,7 @@ class Carte extends StatelessWidget {
       child: onTap == null ? contenu : InkWell(onTap: onTap, child: contenu),
     );
     if (pointillee) {
-      carte = CustomPaint(
-        foregroundPainter: _BordPointille(bord, rayon, epaisseur),
-        child: carte,
-      );
+      carte = CustomPaint(foregroundPainter: _BordPointille(bord, rayon, epaisseur), child: carte);
     }
     return carte;
   }
@@ -330,10 +307,7 @@ class _BordPointille extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final rr = RRect.fromRectAndRadius(
-      (Offset.zero & size).deflate(epaisseur / 2),
-      Radius.circular(rayon),
-    );
+    final rr = RRect.fromRectAndRadius((Offset.zero & size).deflate(epaisseur / 2), Radius.circular(rayon));
     final paint = Paint()
       ..color = couleur
       ..style = PaintingStyle.stroke
@@ -360,10 +334,7 @@ class ListeCarte extends StatelessWidget {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (var i = 0; i < children.length; i++) ...[
-          if (i > 0) const Sep(),
-          children[i],
-        ],
+        for (var i = 0; i < children.length; i++) ...[if (i > 0) const Sep(), children[i]],
       ],
     ),
   );
@@ -404,8 +375,7 @@ class Sep extends StatelessWidget {
   const Sep({super.key, this.marge = EdgeInsets.zero});
   final EdgeInsets marge;
   @override
-  Widget build(BuildContext context) =>
-      Container(margin: marge, height: 1.5, color: C.trait);
+  Widget build(BuildContext context) => Container(margin: marge, height: 1.5, color: C.trait);
 }
 
 /// Titre + sous-titre empilés, qui prennent la place restante.
@@ -421,8 +391,7 @@ class Bloc extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(titre, style: T.gras),
-        if (sous != null)
-          Text(sous!, style: T.mini.copyWith(color: couleurSous ?? C.doux)),
+        if (sous != null) Text(sous!, style: T.mini.copyWith(color: couleurSous ?? C.doux)),
       ],
     ),
   );
@@ -498,14 +467,7 @@ class Btn extends StatelessWidget {
 }
 
 class BtnClair extends StatelessWidget {
-  const BtnClair(
-    this.label, {
-    super.key,
-    this.onPressed,
-    this.icon,
-    this.couleur = C.encre,
-    this.hauteur = 52,
-  });
+  const BtnClair(this.label, {super.key, this.onPressed, this.icon, this.couleur = C.encre, this.hauteur = 52});
   final String label;
   final VoidCallback? onPressed;
   final IconData? icon;
@@ -567,7 +529,10 @@ class BtnP extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (icon != null) ...[Icon(icon, size: 18, color: fg), const SizedBox(width: 6)],
-              Text(label, style: TextStyle(color: fg, fontWeight: FontWeight.w700, fontSize: 14)),
+              Text(
+                label,
+                style: TextStyle(color: fg, fontWeight: FontWeight.w700, fontSize: 14),
+              ),
             ],
           ),
         ),
@@ -854,7 +819,10 @@ class LogoPaiement extends StatelessWidget {
       height: 44,
       alignment: Alignment.center,
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(14)),
-      child: Text(paiement.logo, style: TextStyle(color: fg, fontWeight: FontWeight.w800)),
+      child: Text(
+        paiement.logo,
+        style: TextStyle(color: fg, fontWeight: FontWeight.w800),
+      ),
     );
   }
 }
@@ -948,17 +916,11 @@ class Onglets extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: i == index ? C.surface : Colors.transparent,
                     borderRadius: BorderRadius.circular(999),
-                    boxShadow: i == index
-                        ? const [BoxShadow(color: C.trait, offset: Offset(0, 1))]
-                        : null,
+                    boxShadow: i == index ? const [BoxShadow(color: C.trait, offset: Offset(0, 1))] : null,
                   ),
                   child: Text(
                     labels[i],
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: i == index ? C.encre : C.doux,
-                    ),
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: i == index ? C.encre : C.doux),
                   ),
                 ),
               ),
@@ -1036,8 +998,11 @@ class Titre extends StatelessWidget {
   final Color? couleur;
   final TextAlign? align;
   @override
-  Widget build(BuildContext context) =>
-      Text(texte, textAlign: align, style: T.titre(taille, color: couleur));
+  Widget build(BuildContext context) => Text(
+    texte,
+    textAlign: align,
+    style: T.titre(taille, color: couleur),
+  );
 }
 
 class Doux extends StatelessWidget {
@@ -1110,9 +1075,9 @@ class Champ extends StatelessWidget {
         obscureText: cache,
         inputFormatters: formatters,
         onChanged: onChanged,
-        style: (style ?? const TextStyle()).merge(
-          const TextStyle(fontSize: 17, color: C.encre, fontFamily: 'Figtree'),
-        ).merge(style),
+        style: (style ?? const TextStyle())
+            .merge(const TextStyle(fontSize: 17, color: C.encre, fontFamily: 'Figtree'))
+            .merge(style),
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: const TextStyle(color: C.doux),
@@ -1195,9 +1160,7 @@ class _CodeCasesState extends State<CodeCases> {
                       color: C.surface,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: _focus.hasFocus && i == t.length.clamp(0, widget.longueur - 1)
-                            ? C.vert
-                            : C.trait,
+                        color: _focus.hasFocus && i == t.length.clamp(0, widget.longueur - 1) ? C.vert : C.trait,
                         width: 2,
                       ),
                     ),
@@ -1285,13 +1248,7 @@ class RouteRail extends StatelessWidget {
               Expanded(
                 child: ConstrainedBox(
                   constraints: BoxConstraints(minHeight: voieMin),
-                  child: const Pointilles(
-                    color: C.laterite,
-                    epaisseur: 4,
-                    plein: 8,
-                    vide: 5,
-                    vertical: true,
-                  ),
+                  child: const Pointilles(color: C.laterite, epaisseur: 4, plein: 8, vide: 5, vertical: true),
                 ),
               ),
               const SizedBox(height: 4),
@@ -1304,7 +1261,11 @@ class RouteRail extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [haut, SizedBox(height: gap), bas],
+            children: [
+              haut,
+              SizedBox(height: gap),
+              bas,
+            ],
           ),
         ),
       ],
@@ -1384,11 +1345,7 @@ class Compteur extends StatelessWidget {
       const SizedBox(width: 8),
       SizedBox(
         width: largeurTexte,
-        child: Text(
-          texte ?? '$valeur',
-          textAlign: TextAlign.center,
-          style: grand ? T.titre(20) : T.gras,
-        ),
+        child: Text(texte ?? '$valeur', textAlign: TextAlign.center, style: grand ? T.titre(20) : T.gras),
       ),
       const SizedBox(width: 8),
       IconeBtn(icon: Icons.add_rounded, label: 'Une place de plus', bord: true, onTap: onPlus, taille: 20),
@@ -1398,7 +1355,13 @@ class Compteur extends StatelessWidget {
 
 /// Bandeau d'information coloré (vert, jaune, rouge).
 class Bandeau extends StatelessWidget {
-  const Bandeau(this.texte, {super.key, this.icon = Icons.verified_user_outlined, this.ton = TonPastille.vert, this.riche});
+  const Bandeau(
+    this.texte, {
+    super.key,
+    this.icon = Icons.verified_user_outlined,
+    this.ton = TonPastille.vert,
+    this.riche,
+  });
   final String texte;
   final IconData icon;
   final TonPastille ton;
@@ -1421,9 +1384,7 @@ class Bandeau extends StatelessWidget {
           Icon(icon, size: 22),
           const SizedBox(width: 12),
           Expanded(
-            child: riche != null
-                ? Text.rich(riche!, style: T.petit)
-                : Text(texte, style: T.petit),
+            child: riche != null ? Text.rich(riche!, style: T.petit) : Text(texte, style: T.petit),
           ),
         ],
       ),
@@ -1445,60 +1406,239 @@ class NavBas extends StatelessWidget {
   final int index;
   final ValueChanged<int> onTap;
 
+  /// Barre flottante arrondie ; l'onglet actif est posé dans une pastille.
   @override
-  Widget build(BuildContext context) => Container(
-    padding: EdgeInsets.fromLTRB(4, 8, 4, 14 + MediaQuery.paddingOf(context).bottom),
-    decoration: const BoxDecoration(
-      color: C.surface,
-      border: Border(top: BorderSide(color: C.trait, width: 1.5)),
-    ),
-    child: Row(
-      children: [
-        for (var i = 0; i < items.length; i++)
-          Expanded(
-            child: Semantics(
-              selected: i == index,
-              button: true,
-              label: items[i].label,
-              excludeSemantics: true,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(16),
-                onTap: () => onTap(i),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Badge(
-                        isLabelVisible: items[i].badge > 0,
-                        label: Text('${items[i].badge}'),
-                        backgroundColor: C.vert,
-                        child: Container(
-                          width: 56,
-                          height: 30,
-                          decoration: BoxDecoration(
-                            color: i == index ? C.lateriteC : Colors.transparent,
-                            borderRadius: BorderRadius.circular(999),
+  Widget build(BuildContext context) => Padding(
+    padding: EdgeInsets.fromLTRB(12, 4, 12, 10 + MediaQuery.paddingOf(context).bottom),
+    child: Container(
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: C.surface,
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: C.trait, width: 1.5),
+        boxShadow: ombreDouce,
+      ),
+      child: Row(
+        children: [
+          for (var i = 0; i < items.length; i++)
+            Expanded(
+              child: Semantics(
+                selected: i == index,
+                button: true,
+                label: items[i].label,
+                excludeSemantics: true,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(24),
+                  onTap: () => onTap(i),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    padding: const EdgeInsets.symmetric(vertical: 7),
+                    decoration: BoxDecoration(
+                      color: i == index ? C.sable2 : Colors.transparent,
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Badge(
+                          isLabelVisible: items[i].badge > 0,
+                          label: Text('${items[i].badge}'),
+                          backgroundColor: C.vert,
+                          child: Icon(items[i].icon, size: 23, color: i == index ? C.laterite : C.encre),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          items[i].label,
+                          maxLines: 1,
+                          overflow: TextOverflow.fade,
+                          softWrap: false,
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: i == index ? FontWeight.w800 : FontWeight.w600,
+                            color: i == index ? C.lateriteF : C.encre,
                           ),
-                          child: Icon(items[i].icon, size: 22, color: i == index ? C.lateriteF : C.doux),
                         ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        items[i].label,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: i == index ? FontWeight.w800 : FontWeight.w600,
-                          color: i == index ? C.lateriteF : C.doux,
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
+        ],
+      ),
+    ),
+  );
+}
+
+/// En-tête coloré creusé d'une encoche qui accueille la barre d'action
+/// (« Où allez-vous ? », « Proposer un covoit’ ») : les côtés de l'en-tête
+/// descendent de part et d'autre de la barre.
+class EnteteEncoche extends StatelessWidget {
+  const EnteteEncoche({super.key, required this.children, required this.barre, this.couleur = C.laterite});
+  final List<Widget> children;
+  final Widget barre;
+  final Color couleur;
+
+  static const _marge = 10.0;
+  static const _encoche = 80.0;
+
+  @override
+  Widget build(BuildContext context) => CustomPaint(
+    painter: _EncochePainter(couleur),
+    child: Padding(
+      padding: EdgeInsets.only(top: 16 + MediaQuery.paddingOf(context).top),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: DefaultTextStyle.merge(
+              style: const TextStyle(color: Colors.white),
+              child: IconTheme.merge(
+                data: const IconThemeData(color: Colors.white),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: children),
+              ),
+            ),
           ),
-      ],
+          const SizedBox(height: 20),
+          SizedBox(
+            height: _encoche,
+            child: Padding(padding: const EdgeInsets.fromLTRB(_marge + 10, 11, _marge + 10, 11), child: barre),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _EncochePainter extends CustomPainter {
+  _EncochePainter(this.couleur);
+  final Color couleur;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const m = EnteteEncoche._marge, e = EnteteEncoche._encoche;
+    final bas = size.height - e / 2;
+    final fond = Path()
+      ..addRRect(
+        RRect.fromRectAndCorners(
+          Rect.fromLTWH(0, 0, size.width, bas),
+          bottomLeft: const Radius.circular(24),
+          bottomRight: const Radius.circular(24),
+        ),
+      );
+    final encoche = Path()
+      ..addRRect(
+        RRect.fromRectAndCorners(
+          Rect.fromLTWH(m, size.height - e, size.width - 2 * m, e),
+          topLeft: const Radius.circular(36),
+          topRight: const Radius.circular(36),
+        ),
+      );
+    canvas.drawPath(Path.combine(PathOperation.difference, fond, encoche), Paint()..color = couleur);
+  }
+
+  @override
+  bool shouldRepaint(_EncochePainter old) => old.couleur != couleur;
+}
+
+/// Barre d'action ronde, posée dans l'encoche de l'en-tête.
+class BarreAction extends StatelessWidget {
+  const BarreAction(this.label, {super.key, required this.onTap, this.icon = Icons.place_rounded});
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    label: label,
+    excludeSemantics: true,
+    child: Material(
+      color: C.surface,
+      shape: const StadiumBorder(side: BorderSide(color: C.encre, width: 2)),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Row(
+          children: [
+            const SizedBox(width: 18),
+            Icon(icon, color: C.laterite),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(label, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+/// Carte à languette : la languette colorée du bord droit, avec sa flèche,
+/// ouvre le détail (demandes de passagers).
+class CarteLanguette extends StatelessWidget {
+  const CarteLanguette({super.key, required this.child, required this.onTap, this.couleur = C.laterite, this.label});
+  final Widget child;
+  final VoidCallback onTap;
+  final Color couleur;
+  final String? label;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    label: label,
+    child: Container(
+      decoration: BoxDecoration(
+        color: C.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: C.trait, width: 1.5),
+        boxShadow: ombreDouce,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: Padding(padding: const EdgeInsets.all(14), child: child),
+                ),
+                Container(
+                  width: 28,
+                  color: couleur,
+                  child: const Icon(Icons.arrow_forward_rounded, size: 18, color: Colors.white),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+/// Titre centré des onglets (« Covoit’ », « Proposer »), avec une action à droite.
+class TitreOnglet extends StatelessWidget {
+  const TitreOnglet(this.titre, {super.key, this.action});
+  final String titre;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: EdgeInsets.fromLTRB(16, 8 + MediaQuery.paddingOf(context).top, 8, 4),
+    child: SizedBox(
+      height: 48,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Semantics(header: true, child: Text(titre, style: T.titre(20))),
+          if (action != null) Align(alignment: Alignment.centerRight, child: action),
+        ],
+      ),
     ),
   );
 }
@@ -1618,5 +1758,4 @@ Future<R?> ouvrir<R>(BuildContext context, Widget ecran) =>
 Future<R?> remplacer<R>(BuildContext context, Widget ecran) =>
     Navigator.of(context).pushReplacement<R, void>(MaterialPageRoute(builder: (_) => ecran));
 
-void retourAccueil(BuildContext context) =>
-    Navigator.of(context).popUntil((r) => r.isFirst);
+void retourAccueil(BuildContext context) => Navigator.of(context).popUntil((r) => r.isFirst);

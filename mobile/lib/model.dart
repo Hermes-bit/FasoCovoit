@@ -25,8 +25,7 @@ class Personne {
 
   String get court => nom.isEmpty ? prenom : '$prenom ${nom[0]}.';
   String get complet => '$prenom $nom'.trim();
-  String get initiales =>
-      (prenom.isEmpty ? '?' : prenom[0]) + (nom.isEmpty ? '' : nom[0]);
+  String get initiales => (prenom.isEmpty ? '?' : prenom[0]) + (nom.isEmpty ? '' : nom[0]);
 }
 
 class Conducteur extends Personne {
@@ -106,20 +105,47 @@ const lGounghin = Lieu('Ouagadougou', 'Gounghin', lat: 12.3650, lng: -1.5550, rd
 const lCissin = Lieu('Ouagadougou', 'Cissin', lat: 12.3300, lng: -1.5350, rdv: 'Rond-point de Cissin');
 const lPatteOie = Lieu('Ouagadougou', "Patte d'Oie", lat: 12.3360, lng: -1.5050, rdv: "Échangeur de la Patte d'Oie");
 const lTanghin = Lieu('Ouagadougou', 'Tanghin', lat: 12.4050, lng: -1.5150, rdv: 'Barrage de Tanghin');
-const lUnivOuaga = Lieu('Ouagadougou', 'Université Joseph Ki-Zerbo', lat: 12.3770, lng: -1.4990, rdv: "Entrée de l'université");
+const lUnivOuaga = Lieu(
+  'Ouagadougou',
+  'Université Joseph Ki-Zerbo',
+  lat: 12.3770,
+  lng: -1.4990,
+  rdv: "Entrée de l'université",
+);
 const lAeroport = Lieu('Ouagadougou', 'aéroport', lat: 12.3530, lng: -1.5120, rdv: 'Parking des arrivées');
 const lKoudCentre = Lieu('Koudougou', 'centre-ville', lat: 12.2526, lng: -2.3627, rdv: 'Devant la mairie');
 const lKoudGare = Lieu('Koudougou', 'gare routière', lat: 12.2470, lng: -2.3650, rdv: 'Devant la gare routière');
-const lKoudUniv = Lieu('Koudougou', 'Université Norbert Zongo', lat: 12.2650, lng: -2.3500, rdv: "Entrée de l'université");
+const lKoudUniv = Lieu(
+  'Koudougou',
+  'Université Norbert Zongo',
+  lat: 12.2650,
+  lng: -2.3500,
+  rdv: "Entrée de l'université",
+);
 const lKoudS7 = Lieu('Koudougou', 'Secteur 7', lat: 12.2600, lng: -2.3750, rdv: 'Marché du secteur 7');
 const lBoboGare = Lieu('Bobo-Dioulasso', 'gare routière', lat: 11.1700, lng: -4.2900, rdv: 'Devant la gare routière');
 const lBoboCentre = Lieu('Bobo-Dioulasso', 'centre-ville', lat: 11.1771, lng: -4.2979, rdv: 'Grand marché');
 
 const lieux = <Lieu>[
-  lOuagaGare, lOuagaCentre, lDassasgho, lOuaga2000, lTampouy, lZogona, lPissy, lGounghin,
-  lCissin, lPatteOie, lTanghin, lUnivOuaga, lAeroport,
-  lKoudCentre, lKoudGare, lKoudUniv, lKoudS7,
-  lBoboGare, lBoboCentre,
+  lOuagaGare,
+  lOuagaCentre,
+  lDassasgho,
+  lOuaga2000,
+  lTampouy,
+  lZogona,
+  lPissy,
+  lGounghin,
+  lCissin,
+  lPatteOie,
+  lTanghin,
+  lUnivOuaga,
+  lAeroport,
+  lKoudCentre,
+  lKoudGare,
+  lKoudUniv,
+  lKoudS7,
+  lBoboGare,
+  lBoboCentre,
 ];
 
 /// Distance à vol d'oiseau, en km.
@@ -129,8 +155,7 @@ double distanceKm(Lieu a, Lieu b) {
   double rad(double d) => d * math.pi / 180;
   final dLat = rad(la2 - la1);
   final dLng = rad(lo2 - lo1);
-  final h = math.pow(math.sin(dLat / 2), 2) +
-      math.cos(rad(la1)) * math.cos(rad(la2)) * math.pow(math.sin(dLng / 2), 2);
+  final h = math.pow(math.sin(dLat / 2), 2) + math.cos(rad(la1)) * math.cos(rad(la2)) * math.pow(math.sin(dLng / 2), 2);
   return 2 * 6371 * math.asin(math.sqrt(h));
 }
 
@@ -158,12 +183,7 @@ typedef Croisement = ({double monte, double descend, double fraction});
 
 /// Distance de montée (au départ ou le long de la route) et de dépose.
 /// Null si c'est trop loin ou dans le mauvais sens.
-Croisement? correspondance(
-  Lieu departTrajet,
-  Lieu arriveeTrajet,
-  Lieu depart,
-  Lieu arrivee,
-) {
+Croisement? correspondance(Lieu departTrajet, Lieu arriveeTrajet, Lieu depart, Lieu arrivee) {
   // Rayon large seulement si le passager va lui aussi d'une ville à l'autre :
   // pour un trajet en ville, il reste de 3 km, même sur la route d'un
   // conducteur qui sort de la ville.
@@ -389,12 +409,7 @@ enum Vehicule {
 }
 
 class ReglagesTarifs {
-  const ReglagesTarifs({
-    this.prixSuper = 850,
-    this.prixGasoil = 750,
-    this.usure = 30,
-    this.villeMin = 400,
-  });
+  const ReglagesTarifs({this.prixSuper = 850, this.prixGasoil = 750, this.usure = 30, this.villeMin = 400});
   final int prixSuper;
   final int prixGasoil;
   final int usure;
@@ -554,9 +569,8 @@ class Trajet {
   String get titre => interVilles
       ? '${villeCourte(depart.ville)} → ${villeCourte(arrivee.ville)}'
       : '${depart.quartier} → ${arrivee.quartier}';
-  String get titreLong => interVilles
-      ? '${depart.ville} → ${arrivee.ville}'
-      : '${depart.quartier} → ${arrivee.quartier}';
+  String get titreLong =>
+      interVilles ? '${depart.ville} → ${arrivee.ville}' : '${depart.quartier} → ${arrivee.quartier}';
 }
 
 enum Paiement {
@@ -609,10 +623,7 @@ class Reservation {
 
   static const delaiReponse = Duration(minutes: 30);
   DateTime get limiteReponse => creeLe.add(delaiReponse);
-  bool get aVenir =>
-      statut == StatutResa.enAttente ||
-      statut == StatutResa.confirmee ||
-      statut == StatutResa.enCours;
+  bool get aVenir => statut == StatutResa.enAttente || statut == StatutResa.confirmee || statut == StatutResa.enCours;
 }
 
 /// Pourcentage remboursé selon les règles B7 / C3.
@@ -658,12 +669,7 @@ class Operation {
 }
 
 class Reclamation {
-  Reclamation({
-    required this.numero,
-    required this.operation,
-    required this.date,
-    this.commentaire = '',
-  });
+  Reclamation({required this.numero, required this.operation, required this.date, this.commentaire = ''});
   final String numero;
   final Operation operation;
   final DateTime date;
@@ -719,20 +725,8 @@ enum EtapeConducteur { aucune, documentsEnvoyes, valide, actif }
 
 enum Formule {
   mensuel('Mensuel', 5000, 1, 'par mois', 'Pour essayer'),
-  trimestriel(
-    'Trimestriel',
-    12000,
-    3,
-    'pour 3 mois',
-    'Soit 4 000 F par mois : 3 000 F économisés',
-  ),
-  annuel(
-    'Annuel',
-    42000,
-    12,
-    'pour 12 mois',
-    'Soit 3 500 F par mois : 18 000 F économisés',
-  );
+  trimestriel('Trimestriel', 12000, 3, 'pour 3 mois', 'Soit 4 000 F par mois : 3 000 F économisés'),
+  annuel('Annuel', 42000, 12, 'pour 12 mois', 'Soit 3 500 F par mois : 18 000 F économisés');
 
   const Formule(this.nom, this.prix, this.mois, this.duree, this.economie);
   final String nom;
@@ -742,16 +736,10 @@ enum Formule {
   final String economie;
 }
 
-DateTime ajouterMois(DateTime d, int mois) =>
-    DateTime(d.year, d.month + mois, d.day, d.hour, d.minute);
+DateTime ajouterMois(DateTime d, int mois) => DateTime(d.year, d.month + mois, d.day, d.hour, d.minute);
 
 class Abonnement {
-  Abonnement({
-    required this.formule,
-    required this.debut,
-    required this.offertJusquau,
-    required this.prochainPaiement,
-  });
+  Abonnement({required this.formule, required this.debut, required this.offertJusquau, required this.prochainPaiement});
   Formule formule;
   final DateTime debut;
   final DateTime offertJusquau;
@@ -828,13 +816,10 @@ class TrajetPublie {
   StatutPublie statut = StatutPublie.publie;
   bool exemple = false;
 
-  List<Passager> get confirmes =>
-      passagers.where((p) => p.statut == StatutDemande.acceptee).toList();
-  List<Passager> get enAttente =>
-      passagers.where((p) => p.statut == StatutDemande.attente).toList();
+  List<Passager> get confirmes => passagers.where((p) => p.statut == StatutDemande.acceptee).toList();
+  List<Passager> get enAttente => passagers.where((p) => p.statut == StatutDemande.attente).toList();
   int get reservees => confirmes.fold(0, (t, p) => t + p.places);
-  bool get toutLeMondeABord =>
-      confirmes.any((p) => p.aBord) && confirmes.every((p) => p.aBord || p.absent);
+  bool get toutLeMondeABord => confirmes.any((p) => p.aBord) && confirmes.every((p) => p.aBord || p.absent);
   int get aBord => confirmes.where((p) => p.aBord).length;
 }
 
@@ -877,7 +862,12 @@ class DossierConducteur {
   String permisNumero = '';
   DateTime? permisDelivre;
   String plaque = '';
+
+  /// Marque et modèle (« Toyota Corolla »).
   String vehicule = '';
+
+  /// Couleur de la voiture (« grise »), choisie dans « Ma voiture ».
+  String couleurVoiture = '';
   String assureur = '';
   String police = '';
   String plaqueAssurance = '';
@@ -885,9 +875,24 @@ class DossierConducteur {
 
   void vider() {
     naissance = cnibExpire = permisDelivre = assuranceFin = null;
-    cnibNumero = permisNumero = plaque = vehicule = assureur = police = plaqueAssurance = '';
+    cnibNumero = permisNumero = plaque = vehicule = couleurVoiture = assureur = police = plaqueAssurance = '';
   }
+
+  /// « Toyota Corolla grise ».
+  String get voiture => '$vehicule $couleurVoiture'.trim();
 }
+
+/// Couleurs de voiture proposées dans « Ma voiture ».
+const couleursVoiture = <String, int>{
+  'rouge': 0xFFD7322B,
+  'jaune': 0xFFF2C230,
+  'verte': 0xFF4CB86E,
+  'bleue': 0xFF2F6FE0,
+  'marron': 0xFF6B3F25,
+  'grise': 0xFF9EA3A8,
+  'blanche': 0xFFF4F4F1,
+  'noire': 0xFF22201F,
+};
 
 /// Résultat d'un contrôle automatique du dossier.
 class Controle {
@@ -913,29 +918,38 @@ int anneesEntre(DateTime debut, DateTime date) {
 /// Liste de vérification de l'équipe, à cocher pour chaque conducteur avant
 /// de valider son compte (futur back-office).
 const verificationEquipe = <(String, List<String>)>[
-  ('Identité', [
-    'CNIB nette, recto et verso, sans trace de retouche',
-    'Nom de la CNIB identique à celui du compte',
-    'Visage du selfie identique à la photo de la CNIB',
-    'Numéro, date de naissance et validité saisis conformes à la CNIB',
-  ]),
-  ('Permis', [
-    'Nom du permis identique à celui de la CNIB',
-    'Catégorie B et date de délivrance conformes à la saisie',
-  ]),
-  ('Véhicule', [
-    'Plaque de la carte grise identique à celle de la photo du véhicule',
-    'Modèle et couleur de la photo conformes à la carte grise',
-  ]),
-  ('Assurance', [
-    'Attestation pour cette plaque, dates conformes à la saisie',
-    "Validité confirmée par l'assureur (appel avec le numéro de police)",
-  ]),
-  ('Entretien', [
-    'Originaux vus en personne : CNIB, permis, carte grise, assurance',
-    'Véhicule vu : plaque, modèle et couleur conformes',
-    'Charte du conducteur expliquée et acceptée',
-  ]),
+  (
+    'Identité',
+    [
+      'CNIB nette, recto et verso, sans trace de retouche',
+      'Nom de la CNIB identique à celui du compte',
+      'Visage du selfie identique à la photo de la CNIB',
+      'Numéro, date de naissance et validité saisis conformes à la CNIB',
+    ],
+  ),
+  ('Permis', ['Nom du permis identique à celui de la CNIB', 'Catégorie B et date de délivrance conformes à la saisie']),
+  (
+    'Véhicule',
+    [
+      'Plaque de la carte grise identique à celle de la photo du véhicule',
+      'Modèle et couleur de la photo conformes à la carte grise',
+    ],
+  ),
+  (
+    'Assurance',
+    [
+      'Attestation pour cette plaque, dates conformes à la saisie',
+      "Validité confirmée par l'assureur (appel avec le numéro de police)",
+    ],
+  ),
+  (
+    'Entretien',
+    [
+      'Originaux vus en personne : CNIB, permis, carte grise, assurance',
+      'Véhicule vu : plaque, modèle et couleur conformes',
+      'Charte du conducteur expliquée et acceptée',
+    ],
+  ),
 ];
 
 /// Motifs de refus proposés à l'équipe.
@@ -1034,6 +1048,7 @@ class AppState extends ChangeNotifier {
     onglet = i;
     _changer();
   }
+
   String telephone = '70 00 00 00';
   String prenom = 'Hermès';
   String nom = 'Barry';
@@ -1074,8 +1089,7 @@ class AppState extends ChangeNotifier {
   int _essaisSms = 0;
 
   static String chiffres(String tel) => tel.replaceAll(RegExp(r'\D'), '');
-  static String formaterTel(String c) =>
-      [for (var i = 0; i + 2 <= c.length; i += 2) c.substring(i, i + 2)].join(' ');
+  static String formaterTel(String c) => [for (var i = 0; i + 2 <= c.length; i += 2) c.substring(i, i + 2)].join(' ');
 
   bool compteExiste(String tel) => _comptes.contains(chiffres(tel));
 
@@ -1160,6 +1174,10 @@ class AppState extends ChangeNotifier {
     trajetsConducteur = 0;
     _exempleAjoute = false;
     _coursesIgnorees.clear();
+    _demandesEcartees.clear();
+    enLigneUniquement = false;
+    sourdine = false;
+    introConducteurVue = false;
     _compteur = 0;
     _nResa = 0;
     mode = Mode.passager;
@@ -1199,6 +1217,7 @@ class AppState extends ChangeNotifier {
     }
     _semer(historique: demo);
   }
+
   String get codeParrainage {
     final base = prenom
         .toUpperCase()
@@ -1242,9 +1261,7 @@ class AppState extends ChangeNotifier {
   int _compteur = 0;
 
   int get solde => depose + bonus;
-  int get bloque => operations
-      .where((o) => o.statut == StatutOp.bloque)
-      .fold(0, (t, o) => t - o.montant);
+  int get bloque => operations.where((o) => o.statut == StatutOp.bloque).fold(0, (t, o) => t - o.montant);
   int get notificationsNonLues => notifications.where((n) => !n.lue).length;
   int get messagesNonLus => conversations.fold(0, (t, c) => t + c.nonLus);
   bool get estConducteur => etapeConducteur == EtapeConducteur.actif;
@@ -1426,8 +1443,7 @@ class AppState extends ChangeNotifier {
   }
 
   /// Offres encore valables d'une demande du passager.
-  List<Offre> offresValables(DemandeTrajet d) =>
-      d.offres.where((o) => !maintenant.isAfter(o.limite)).toList();
+  List<Offre> offresValables(DemandeTrajet d) => d.offres.where((o) => !maintenant.isAfter(o.limite)).toList();
 
   /// Démo : un conducteur de plus répond. D'abord les conducteurs dont un
   /// trajet publié passe chez le passager, puis des conducteurs inscrits
@@ -1552,19 +1568,74 @@ class AppState extends ChangeNotifier {
     return resultat..sort((a, b) => a.passage.compareTo(b.passage));
   }
 
-  List<CoursePossible> coursesPour(TrajetPublie t) =>
-      coursesPossibles.where((c) => c.trajet == t).toList();
+  List<CoursePossible> coursesPour(TrajetPublie t) => coursesPossibles.where((c) => c.trajet == t).toList();
 
   /// Tous les passagers inscrits qui cherchent un trajet et qu'aucun trajet
   /// du conducteur ne croise : il peut accepter leur course en la publiant.
   List<DemandeTrajet> get passagersSansCourse {
     final avecCourse = {for (final c in coursesPossibles) c.demande};
-    return demandesTrajet.where((d) => !d.moi && !avecCourse.contains(d)).toList()
+    return demandesTrajet.where((d) => !d.moi && !avecCourse.contains(d) && !_demandesEcartees.contains(d.id)).toList()
       ..sort((a, b) => a.quand.compareTo(b.quand));
   }
 
+  /// Demandes de passagers que le conducteur a écartées de sa liste.
+  final Set<String> _demandesEcartees = {};
+
   void ignorerCourse(CoursePossible c) {
     _coursesIgnorees.add('${c.trajet.id}/${c.demande.id}');
+    _changer();
+  }
+
+  /// Le conducteur écarte la demande d'un passager qu'aucun de ses trajets ne croise.
+  void ecarterDemande(DemandeTrajet d) {
+    _demandesEcartees.add(d.id);
+    _changer();
+  }
+
+  /// « Tout effacer » : écarte les courses possibles et les autres demandes.
+  /// Les réservations sur ses trajets, elles, attendent une réponse.
+  void toutEffacer() {
+    for (final c in coursesPossibles) {
+      _coursesIgnorees.add('${c.trajet.id}/${c.demande.id}');
+    }
+    for (final d in demandesTrajet.where((d) => !d.moi)) {
+      _demandesEcartees.add(d.id);
+    }
+    _changer();
+  }
+
+  // Réglages du conducteur.
+  /// N'afficher que les demandes payées en ligne (portefeuille, Orange, Moov).
+  bool enLigneUniquement = false;
+
+  /// Pas de notification de nouvelle demande.
+  bool sourdine = false;
+
+  void majReglages({bool? enLigne, bool? silence}) {
+    if (enLigne != null) enLigneUniquement = enLigne;
+    if (silence != null) sourdine = silence;
+    _changer();
+  }
+
+  /// La fiche « Mode conducteur » s'affiche une fois, à la première entrée.
+  bool introConducteurVue = false;
+
+  void vuIntroConducteur() => introConducteurVue = true;
+
+  /// Taux d'annulation du conducteur (%), null tant qu'il n'a pas roulé.
+  int? get tauxAnnulation {
+    final total = trajetsConducteur + annulationsConducteur;
+    return trajetsConducteur == 0 ? null : annulationsConducteur * 100 ~/ total;
+  }
+
+  /// « Ma voiture » : marque et modèle, couleur, plaque.
+  void majVoiture({required String vehicule, required String couleur, required String plaque}) {
+    if (vehicule.trim().isEmpty) throw ErreurMetier('Indiquez la marque et le modèle.');
+    if (!plaqueValide(plaque)) throw ErreurMetier('Plaque au format habituel : 11 HH 2345.');
+    dossier
+      ..vehicule = vehicule.trim()
+      ..couleurVoiture = couleur
+      ..plaque = plaque.trim().toUpperCase();
     _changer();
   }
 
@@ -1635,8 +1706,7 @@ class AppState extends ChangeNotifier {
       if (conductrices && !t.conducteur.femme) return false;
       if (matin && t.heureDepart.hour >= 12) return false;
       return true;
-    }).toList()
-      ..sort((a, b) => a.heureDepart.compareTo(b.heureDepart));
+    }).toList()..sort((a, b) => a.heureDepart.compareTo(b.heureDepart));
   }
 
   // ------------------------------------------------------------- réservation
@@ -1837,9 +1907,7 @@ class AppState extends ChangeNotifier {
     }
     if (montant < 1000) throw ErreurMetier('Retrait minimum : 1 000 F.');
     if (montant > depose) {
-      throw ErreurMetier(
-        'Vous pouvez retirer au plus ${fcfa(depose)} : le bonus ne se retire pas.',
-      );
+      throw ErreurMetier('Vous pouvez retirer au plus ${fcfa(depose)} : le bonus ne se retire pas.');
     }
     depose -= montant;
     operations.insert(
@@ -1859,7 +1927,8 @@ class AppState extends ChangeNotifier {
     final existante = reclamations.where((r) => r.operation == op);
     if (existante.isNotEmpty) return existante.first;
     final rec = Reclamation(
-      numero: 'R-${maintenant.day.toString().padLeft(2, '0')}${maintenant.month.toString().padLeft(2, '0')}-${(42 + reclamations.length).toString().padLeft(4, '0')}',
+      numero:
+          'R-${maintenant.day.toString().padLeft(2, '0')}${maintenant.month.toString().padLeft(2, '0')}-${(42 + reclamations.length).toString().padLeft(4, '0')}',
       operation: op,
       date: maintenant,
       commentaire: commentaire,
@@ -1916,8 +1985,7 @@ class AppState extends ChangeNotifier {
     _changer();
   }
 
-  Conversation get conversationEquipe =>
-      conversations.firstWhere((c) => c.equipe);
+  Conversation get conversationEquipe => conversations.firstWhere((c) => c.equipe);
 
   Conversation? conversationPour(Personne p) {
     for (final c in conversations) {
@@ -1977,11 +2045,7 @@ class AppState extends ChangeNotifier {
         importees == 0,
         importees == 0 ? null : '${pluriel(importees, 'photo importée', 'photos importées')} : reprenez-les',
       ),
-      Controle(
-        '21 ans ou plus',
-        age != null && age >= 21,
-        age == null ? 'Date de naissance à saisir' : '$age ans',
-      ),
+      Controle('21 ans ou plus', age != null && age >= 21, age == null ? 'Date de naissance à saisir' : '$age ans'),
       Controle(
         'CNIB en cours de validité',
         d.cnibNumero.trim().isNotEmpty && jCnib != null && jCnib >= 0,
@@ -2092,13 +2156,15 @@ class AppState extends ChangeNotifier {
       if (j < 0) {
         r.add((
           doc: doc,
-          texte: '$nom a expiré le ${dateLongue(fin)} : envoyez le nouveau document. En attendant, vous ne pouvez plus publier.',
+          texte:
+              '$nom a expiré le ${dateLongue(fin)} : envoyez le nouveau document. En attendant, vous ne pouvez plus publier.',
           bloquant: true,
         ));
       } else if (j <= 30) {
         r.add((
           doc: doc,
-          texte: '$nom expire le ${dateLongue(fin)}${j == 0 ? " (aujourd'hui)" : ' (dans ${pluriel(j, 'jour')})'} : envoyez le nouveau document.',
+          texte:
+              '$nom expire le ${dateLongue(fin)}${j == 0 ? " (aujourd'hui)" : ' (dans ${pluriel(j, 'jour')})'} : envoyez le nouveau document.',
           bloquant: false,
         ));
       }
@@ -2124,18 +2190,13 @@ class AppState extends ChangeNotifier {
   }
 
   void activerAbonnement(Formule f) {
-    if (etapeConducteur != EtapeConducteur.valide &&
-        etapeConducteur != EtapeConducteur.actif) {
+    if (etapeConducteur != EtapeConducteur.valide && etapeConducteur != EtapeConducteur.actif) {
       throw ErreurMetier("Votre compte doit d'abord être validé par l'équipe.");
     }
     final debut = maintenant;
     final offert = ajouterMois(debut, 1);
-    abonnement = Abonnement(
-      formule: f,
-      debut: debut,
-      offertJusquau: offert,
-      prochainPaiement: offert,
-    )..recus.add('${dateCourte(debut)} · 1er mois offert · 0 F');
+    abonnement = Abonnement(formule: f, debut: debut, offertJusquau: offert, prochainPaiement: offert)
+      ..recus.add('${dateCourte(debut)} · 1er mois offert · 0 F');
     etapeConducteur = EtapeConducteur.actif;
     _changer();
   }
@@ -2170,8 +2231,7 @@ class AppState extends ChangeNotifier {
     _changer();
   }
 
-  bool get suspendu =>
-      suspenduJusquau != null && maintenant.isBefore(suspenduJusquau!);
+  bool get suspendu => suspenduJusquau != null && maintenant.isBefore(suspenduJusquau!);
 
   TrajetPublie publier({
     required Ligne ligne,
@@ -2196,8 +2256,7 @@ class AppState extends ChangeNotifier {
     if (documentsExpires) {
       throw ErreurMetier('Document expiré : envoyez votre nouvelle assurance ou CNIB pour publier.');
     }
-    if (abonnement?.arrete == true &&
-        maintenant.isAfter(abonnement!.prochainPaiement)) {
+    if (abonnement?.arrete == true && maintenant.isAfter(abonnement!.prochainPaiement)) {
       throw ErreurMetier('Votre abonnement est arrêté : renouvelez-le pour publier.');
     }
     if (!depart.isAfter(maintenant)) {
@@ -2206,9 +2265,7 @@ class AppState extends ChangeNotifier {
     if (places < 1 || places > 4) throw ErreurMetier('De 1 à 4 places.');
     final tarif = calculerTarif(ligne);
     if (prix < tarif.plancher || prix > tarif.plafond) {
-      throw ErreurMetier(
-        'Prix entre ${fcfa(tarif.plancher)} et ${fcfa(tarif.plafond)} par place.',
-      );
+      throw ErreurMetier('Prix entre ${fcfa(tarif.plancher)} et ${fcfa(tarif.plafond)} par place.');
     }
     if (!especes && !mobile) throw ErreurMetier('Acceptez au moins un moyen de paiement.');
     if (entreFemmes && !femme) {
@@ -2315,8 +2372,7 @@ class AppState extends ChangeNotifier {
   }
 
   /// « Passager absent » : possible 10 min après l'heure de départ.
-  bool absencePossible(TrajetPublie t) =>
-      maintenant.isAfter(t.depart.add(const Duration(minutes: 10)));
+  bool absencePossible(TrajetPublie t) => maintenant.isAfter(t.depart.add(const Duration(minutes: 10)));
 
   void marquerAbsent(TrajetPublie t, Passager p) {
     if (!absencePossible(t)) {
@@ -2427,9 +2483,8 @@ class AppState extends ChangeNotifier {
     _changer();
   }
 
-  List<GainTrajet> get gainsDuMois => gains
-      .where((g) => g.date.month == maintenant.month && g.date.year == maintenant.year)
-      .toList();
+  List<GainTrajet> get gainsDuMois =>
+      gains.where((g) => g.date.month == maintenant.month && g.date.year == maintenant.year).toList();
 
   // ------------------------------------------------------------- utilitaires
 
@@ -2441,8 +2496,7 @@ class AppState extends ChangeNotifier {
     final i = _nResa;
     if (i < _refs.length) return _refs[i];
     const a = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    String bloc(int seed, int n) =>
-        List.generate(n, (k) => a[(seed * 7 + k * 13 + i * 31) % a.length]).join();
+    String bloc(int seed, int n) => List.generate(n, (k) => a[(seed * 7 + k * 13 + i * 31) % a.length]).join();
     return 'FC-${bloc(i, 4)}-${bloc(i + 3, 3)}';
   }
 
@@ -2619,7 +2673,8 @@ class AppState extends ChangeNotifier {
       ..permisNumero = 'BF-2015-0412873'
       ..permisDelivre = DateTime(2015, 6, 1)
       ..plaque = '11 HH 2345'
-      ..vehicule = 'Toyota Corolla grise'
+      ..vehicule = 'Toyota Corolla'
+      ..couleurVoiture = 'grise'
       ..assureur = 'Assureur de démonstration'
       ..police = 'AUTO-2026-58213'
       ..plaqueAssurance = '11 HH 2345'
@@ -2763,10 +2818,7 @@ class AppState extends ChangeNotifier {
         contexte: 'Aide',
         equipe: true,
         messages: [
-          Message(
-            'Bonjour $prenom, le conducteur a annulé votre trajet Pissy → Zogona.',
-            annule.heureDepart,
-          ),
+          Message('Bonjour $prenom, le conducteur a annulé votre trajet Pissy → Zogona.', annule.heureDepart),
           Message('Votre remboursement a été envoyé.', n.subtract(const Duration(days: 1))),
         ],
       ),
@@ -2804,12 +2856,9 @@ class AppState extends ChangeNotifier {
 
 /// Donne accès à l'état depuis n'importe quel écran.
 class AppScope extends InheritedNotifier<AppState> {
-  const AppScope({super.key, required AppState state, required super.child})
-    : super(notifier: state);
+  const AppScope({super.key, required AppState state, required super.child}) : super(notifier: state);
 
-  static AppState of(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<AppScope>()!.notifier!;
+  static AppState of(BuildContext context) => context.dependOnInheritedWidgetOfExactType<AppScope>()!.notifier!;
 
-  static AppState read(BuildContext context) =>
-      context.getInheritedWidgetOfExactType<AppScope>()!.notifier!;
+  static AppState read(BuildContext context) => context.getInheritedWidgetOfExactType<AppScope>()!.notifier!;
 }

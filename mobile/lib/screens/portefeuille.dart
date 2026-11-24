@@ -78,7 +78,10 @@ class PortefeuilleEcran extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(label, style: const TextStyle(fontSize: 13, color: C.beige)),
-            Text(fcfa(montant), style: TextStyle(fontWeight: FontWeight.w700, color: couleur)),
+            Text(
+              fcfa(montant),
+              style: TextStyle(fontWeight: FontWeight.w700, color: couleur),
+            ),
             Text(note, style: const TextStyle(fontSize: 13, color: C.beige2)),
           ],
         ),
@@ -131,7 +134,12 @@ class PortefeuilleEcran extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: Btn('Déposer', icon: Icons.add_rounded, hauteur: 54, onPressed: () => ouvrir(context, const DeposerEcran())),
+                  child: Btn(
+                    'Déposer',
+                    icon: Icons.add_rounded,
+                    hauteur: 54,
+                    onPressed: () => ouvrir(context, const DeposerEcran()),
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -201,7 +209,8 @@ class _DeposerEcranState extends State<DeposerEcran> {
     final ok = await confirmer(
       context,
       titre: 'Confirmez sur votre téléphone',
-      texte: 'Une demande de validation de ${fcfa(_montant)} arrive sur le ${s.telephone}. '
+      texte:
+          'Une demande de validation de ${fcfa(_montant)} arrive sur le ${s.telephone}. '
           'Confirmez avec votre code secret ${_op.label}.\n\nPrototype : le dépôt est simulé.',
       oui: "J'ai confirmé",
       non: 'Annuler',
@@ -254,15 +263,22 @@ class _DeposerEcranState extends State<DeposerEcran> {
                 children: [
                   Row(
                     children: [
-                      const Expanded(child: Text('Vous recevez sur le portefeuille', style: TextStyle(color: C.doux))),
+                      const Expanded(
+                        child: Text('Vous recevez sur le portefeuille', style: TextStyle(color: C.doux)),
+                      ),
                       Text(fcfa(_montant), style: T.gras),
                     ],
                   ),
                   const SizedBox(height: 8),
                   const Row(
                     children: [
-                      Expanded(child: Text('Frais de dépôt', style: TextStyle(color: C.doux))),
-                      Text('À confirmer', style: TextStyle(fontWeight: FontWeight.w700, color: C.doux)),
+                      Expanded(
+                        child: Text('Frais de dépôt', style: TextStyle(color: C.doux)),
+                      ),
+                      Text(
+                        'À confirmer',
+                        style: TextStyle(fontWeight: FontWeight.w700, color: C.doux),
+                      ),
                     ],
                   ),
                 ],
@@ -374,7 +390,10 @@ class ParrainageEcran extends StatelessWidget {
     final p = s.parrainage;
     Widget etape(String n, String texte) => Row(
       children: [
-        SizedBox(width: 24, child: Text(n, style: T.titre(20, color: C.laterite))),
+        SizedBox(
+          width: 24,
+          child: Text(n, style: T.titre(20, color: C.laterite)),
+        ),
         const SizedBox(width: 12),
         Expanded(child: Text(texte, style: T.petit)),
       ],
@@ -397,7 +416,10 @@ class ParrainageEcran extends StatelessWidget {
           couleur: C.encre,
           retour: true,
           children: [
-            const Text('Parrainage', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: C.etoile)),
+            const Text(
+              'Parrainage',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: C.etoile),
+            ),
             Text('500 F pour vous, 500 F pour votre ami', style: T.titre(32, color: Colors.white)),
           ],
         ),
@@ -422,7 +444,8 @@ class ParrainageEcran extends StatelessWidget {
                     onPressed: () {
                       Clipboard.setData(
                         ClipboardData(
-                          text: 'Inscris-toi sur FasoCovoit avec mon code ${s.codeParrainage} : '
+                          text:
+                              'Inscris-toi sur FasoCovoit avec mon code ${s.codeParrainage} : '
                               'on reçoit chacun 500 F après ton premier trajet.',
                         ),
                       );
@@ -497,10 +520,7 @@ class _RetirerEcranState extends State<RetirerEcran> {
     final s = AppScope.of(context);
     return Ecran(
       children: [
-        Barre(
-          titre: "Retirer de l'argent",
-          sousTitre: 'Argent déposé : ${fcfa(s.depose)} · le bonus ne se retire pas',
-        ),
+        Barre(titre: "Retirer de l'argent", sousTitre: 'Argent déposé : ${fcfa(s.depose)} · le bonus ne se retire pas'),
         Zone(
           gap: 14,
           children: [
@@ -541,7 +561,9 @@ class _RetirerEcranState extends State<RetirerEcran> {
                 children: [
                   Row(
                     children: [
-                      Expanded(child: Text('Frais de retrait', style: TextStyle(color: C.doux))),
+                      Expanded(
+                        child: Text('Frais de retrait', style: TextStyle(color: C.doux)),
+                      ),
                       Text('À confirmer', style: T.gras),
                     ],
                   ),
@@ -551,7 +573,11 @@ class _RetirerEcranState extends State<RetirerEcran> {
                       Text('Arrivée', style: TextStyle(color: C.doux)),
                       SizedBox(width: 12),
                       Expanded(
-                        child: Text('Sous 24 h, souvent en quelques minutes', textAlign: TextAlign.right, style: T.gras),
+                        child: Text(
+                          'Sous 24 h, souvent en quelques minutes',
+                          textAlign: TextAlign.right,
+                          style: T.gras,
+                        ),
                       ),
                     ],
                   ),
@@ -575,9 +601,7 @@ class _RetirerEcranState extends State<RetirerEcran> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Doux(
-                  "Le code à 4 chiffres choisi à l'ouverture du portefeuille, pas votre code mobile money.",
-                ),
+                const Doux("Le code à 4 chiffres choisi à l'ouverture du portefeuille, pas votre code mobile money."),
               ],
             ),
           ],
@@ -639,7 +663,10 @@ class _ReclamationEcranState extends State<ReclamationEcran> {
                 children: [
                   const Doux('Opération concernée'),
                   Text('${op.titre} · ${fcfa(op.montant)}', style: T.gras),
-                  Doux('${jourRelatif(op.date, s.maintenant)} ${heure(op.date)}${op.ref != null ? ' · réf. ${op.ref}' : ''}', taille: 14),
+                  Doux(
+                    '${jourRelatif(op.date, s.maintenant)} ${heure(op.date)}${op.ref != null ? ' · réf. ${op.ref}' : ''}',
+                    taille: 14,
+                  ),
                 ],
               ),
             ),

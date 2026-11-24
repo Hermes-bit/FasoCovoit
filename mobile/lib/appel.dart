@@ -34,6 +34,6 @@ Future<void> appeler(BuildContext context, String numero, {String? titre}) async
     context,
     titre ?? 'Appeler le $numero',
     'Composez le $numero depuis votre téléphone. '
-        'Dans ce prototype, l’appel n’est pas lancé automatiquement.',
+    'Dans ce prototype, l’appel n’est pas lancé automatiquement.',
   );
 }
