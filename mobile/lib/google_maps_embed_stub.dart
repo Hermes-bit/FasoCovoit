@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-Widget buildGoogleMapsEmbed(Uri uri) => const Card(
+Widget buildGoogleMapsEmbed(Uri uri, double? height) => const Card(
   child: ListTile(
     leading: Icon(Icons.map_outlined),
     title: Text('Carte intégrée disponible sur le Web'),

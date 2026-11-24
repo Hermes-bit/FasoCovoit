@@ -29,12 +29,20 @@ class GoogleMapsRouteEmbed extends StatelessWidget {
     required this.destination,
     this.stop,
     this.apiKey,
+    this.height = 280,
   });
 
   final String departure;
   final String destination;
   final String? stop;
   final String? apiKey;
+
+  /// Hauteur de la carte ; `null` pour remplir la place disponible.
+  final double? height;
+
+  /// Vrai quand la carte peut réellement s'afficher (Web + clé configurée).
+  static bool get disponible =>
+      kIsWeb && _googleMapsEmbedApiKey.trim().isNotEmpty;
 
   @override
   Widget build(BuildContext context) {
@@ -69,6 +77,6 @@ class GoogleMapsRouteEmbed extends StatelessWidget {
       destination: destination,
       stop: stop,
     );
-    return platform.buildGoogleMapsEmbed(uri);
+    return platform.buildGoogleMapsEmbed(uri, height);
   }
 }

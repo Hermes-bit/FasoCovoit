@@ -1,42 +1,55 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
-import 'journeys.dart';
-import 'screens.dart';
+import 'model.dart';
+import 'screens/compte.dart';
+import 'screens/conducteur.dart';
+import 'screens/passager.dart';
+import 'theme.dart';
 
-void main() => runApp(FasoCovoitApp(store: JourneyStore.demo()));
+void main() {
+  final state = AppState()..demarrerHorloge();
+  runApp(FasoCovoitApp(state: state));
+}
 
 class FasoCovoitApp extends StatelessWidget {
-  const FasoCovoitApp({super.key, required this.store});
+  const FasoCovoitApp({super.key, required this.state});
 
-  final JourneyStore store;
+  final AppState state;
 
   @override
-  Widget build(BuildContext context) {
-    const green = Color(0xff09683f);
-    final theme = ThemeData(
-      colorScheme: ColorScheme.fromSeed(seedColor: green, primary: green),
-      scaffoldBackgroundColor: const Color(0xfff7f5ef),
-      useMaterial3: true,
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: Colors.white,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-      ),
-      cardTheme: CardThemeData(
-        color: Colors.white,
-        elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      ),
-    );
-    return MaterialApp(
+  Widget build(BuildContext context) => AppScope(
+    state: state,
+    child: MaterialApp(
       title: 'FasoCovoit',
       debugShowCheckedModeBanner: false,
       locale: const Locale('fr'),
       supportedLocales: const [Locale('fr')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
-      theme: theme,
-      home: MainScreen(store: store),
-    );
+      theme: construireTheme(),
+      // Sur grand écran (Web), l'application garde une largeur de téléphone.
+      builder: (context, child) => ColoredBox(
+        color: const Color(0xFFE4D2B6),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: ClipRect(child: child),
+          ),
+        ),
+      ),
+      home: const Racine(),
+    ),
+  );
+}
+
+/// Bienvenue hors connexion, puis espace passager ou conducteur.
+class Racine extends StatelessWidget {
+  const Racine({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppScope.of(context);
+    if (!s.connecte) return const BienvenueEcran();
+    return s.mode == Mode.conducteur ? const EspaceConducteur() : const EspacePassager();
   }
 }

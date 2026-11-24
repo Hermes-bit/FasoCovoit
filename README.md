@@ -1,9 +1,10 @@
 # FasoCovoit
 
-Projet de covoiturage pour le Burkina Faso. La première étape cible les trajets
-interurbains, avec Ouagadougou–Bobo-Dioulasso comme ligne pilote envisagée.
-Deux démonstrations indépendantes sont disponibles : la maquette web initiale et
-une première base Flutter. Elles utilisent uniquement des données fictives.
+Projet de covoiturage pour le Burkina Faso : trajets en ville à Ouagadougou et
+ligne pilote Ouagadougou–Koudougou. Deux démonstrations indépendantes sont
+disponibles : la maquette web initiale et l'application Flutter, reconstruite
+d'après le prototype « Latérite et drapeau ». Elles utilisent uniquement des
+données fictives.
 
 ## Essayer la maquette web
 
@@ -26,9 +27,46 @@ flutter pub get
 flutter run -d chrome
 ```
 
-Le parcours Flutter comprend la recherche, les réservations simulées et un
-profil passager. Le profil conducteur sera construit dans une étape suivante.
-La publication n’est donc pas proposée dans l’espace passager.
+### Ce que contient l'application
+
+L'application reprend les écrans mobiles du prototype « Latérite » (couleurs,
+polices Figtree et Bricolage Grotesque, en-tête « piste », billet) :
+
+- **Compte** : bienvenue, numéro, code SMS, profil, contact d'urgence,
+  suppression du compte.
+- **Passager** : recherche en ville ou entre villes, résultats filtrables, fiche
+  du trajet, paiement (portefeuille avec bonus, Orange Money, Moov Money,
+  espèces), demande en attente, billet avec QR et code de départ, mes trajets,
+  annulation, trajet en cours, SOS, notation, signalement.
+- **Messages, notifications et profil**.
+- **Portefeuille** : solde, dépôt, historique, parrainage, retrait, réclamation.
+- **Conducteur** : inscription (documents, validation, abonnement), publication
+  avec prix plafonné, demandes, codes ou QR au départ, trajet en cours, gains,
+  portefeuille conducteur, abonnement, annulation.
+- **Colis** : aperçu des écrans de la version 2.
+
+Les règles de la maquette sont réellement calculées : plafond et prix conseillé
+d'après les tarifs (Ouaga–Koudougou : plancher 1 000 F, conseillé 1 800 F,
+plafond 2 500 F), bonus limité à la moitié du prix, remboursements à 100 %,
+50 % ou 0 % selon le délai, expiration d'une demande après 30 minutes,
+suspension du conducteur après 3 annulations en 30 jours.
+
+### Raccourcis de démonstration
+
+- « Commencer » ouvre l'inscription ; « J'ai déjà un compte » mène directement
+  à l'accueil après le code SMS. Tout code SMS à 6 chiffres est accepté.
+- « Simuler l'acceptation du conducteur » et « Simuler la validation par
+  l'équipe » remplacent les actions qui seront faites par d'autres personnes.
+- Au premier trajet publié, deux demandes fictives arrivent. Les codes de départ
+  de ces passagers sont affichés à l'écran ; le scanner propose de simuler son
+  résultat (la caméra n'est pas encore utilisée).
+
+Le code est organisé ainsi dans `mobile/lib` : `model.dart` (règles et données
+en mémoire), `ui.dart` et `theme.dart` (composants du thème), `screens/`
+(un fichier par parcours).
+
+Le back-office de l'équipe (écrans 32 à 35, 42, 50 à 52, 54 et 58 de la
+maquette, prévu en Next.js) n'est pas encore construit.
 
 ### Carte Google Maps sur le Web
 
@@ -78,21 +116,22 @@ L'adresse IP locale du PC se trouve avec `ipconfig`. Il faut laisser la commande
 en cours ; le pare-feu Windows peut demander l'autorisation pour le réseau privé.
 Cette méthode sert au développement et ne rend pas le site accessible sur Internet.
 
-Cette base permet de rechercher par villes, date et nombre de places, de consulter
-les détails, de publier un trajet fictif, de simuler une réservation et de
-l'annuler. Les disponibilités sont mises à jour **dans la session locale**.
-Les données ne persistent pas au redémarrage et ne sont pas partagées entre
-utilisateurs. L'application Flutter et la maquette web ne partagent pas leurs données.
+Les places, le portefeuille, les messages et les trajets publiés sont mis à jour
+**dans la session locale**. Les données ne persistent pas au redémarrage et ne
+sont pas partagées entre utilisateurs. L'application Flutter et la maquette web
+ne partagent pas leurs données.
 
 ## Limites importantes
 
 Ces démonstrations ne fournissent ni vrais comptes, ni réservation réelle, ni
-paiement, ni vérification d'identité, ni géolocalisation, ni appel, ni
-messagerie, ni dispositif SOS. Google Maps Embed n’affiche une carte Web que
-lorsqu’une clé configurée est disponible. Les avis, portefeuilles, réductions
-et profils restent fictifs ou désactivés; aucune règle réelle de plafonnement
-ou de remboursement n'est appliquée. Ne saisissez pas de coordonnées bancaires
-ou d’informations personnelles réelles.
+paiement, ni vérification d'identité, ni géolocalisation, ni messagerie réelle,
+ni dispositif SOS : aucune alerte ni aucun SMS n'est envoyé. Sur le Web, les
+boutons « Appeler la police · 17 » et « pompiers · 18 » ouvrent le composeur du
+téléphone ; ailleurs, ils affichent le numéro à composer. Le QR du billet est
+une illustration non lisible. La carte du trajet est un dessin, remplacé par
+Google Maps Embed sur le Web lorsqu'une clé est configurée. Les règles de prix
+et de remboursement sont calculées mais ne déplacent aucun argent réel. Ne
+saisissez pas de coordonnées bancaires ou d’informations personnelles réelles.
 
 ## Prochaines étapes avant un pilote réel
 

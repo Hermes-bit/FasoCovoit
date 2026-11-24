@@ -1,5 +1,5 @@
 name: fasocovoit
-description: "FasoCovoit - démonstration locale de covoiturage interurbain."
+description: "FasoCovoit - prototype de covoiturage (Ouaga et Ouaga–Koudougou)."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -59,6 +59,27 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  # Polices du thème « Latérite et drapeau » (licence SIL OFL, voir assets/fonts).
+  fonts:
+    - family: Figtree
+      fonts:
+        - asset: assets/fonts/Figtree-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Figtree-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Figtree-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Figtree-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Figtree-ExtraBold.ttf
+          weight: 800
+    - family: Bricolage
+      fonts:
+        - asset: assets/fonts/BricolageGrotesque-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/BricolageGrotesque-ExtraBold.ttf
+          weight: 800
 
   # To add assets to your application, add an assets section, like this:
   # assets:

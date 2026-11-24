@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:web/web.dart' as web;
 
-Widget buildGoogleMapsEmbed(Uri uri) => ClipRRect(
-  borderRadius: BorderRadius.circular(14),
+/// `height` nul : la carte remplit la place disponible.
+Widget buildGoogleMapsEmbed(Uri uri, double? height) => ClipRRect(
+  borderRadius: BorderRadius.circular(height == null ? 0 : 14),
   child: SizedBox(
     width: double.infinity,
-    height: 280,
+    height: height,
     child: HtmlElementView.fromTagName(
       tagName: 'iframe',
       onElementCreated: (element) {
