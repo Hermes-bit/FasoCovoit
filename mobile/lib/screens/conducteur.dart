@@ -50,7 +50,8 @@ class EspaceConducteur extends StatelessWidget {
         index: index,
         onTap: s.allerOnglet,
         items: [
-          const NavItem(Icons.directions_car_outlined, 'Mes trajets'),
+          // Badge : courses possibles sur la route du conducteur.
+          NavItem(Icons.directions_car_outlined, 'Mes trajets', badge: s.coursesPossibles.length),
           NavItem(Icons.notifications_none_rounded, 'Demandes', badge: demandes),
           const NavItem(Icons.account_balance_wallet_outlined, 'Gains'),
           const NavItem(Icons.person_outline_rounded, 'Profil'),
@@ -75,6 +76,8 @@ class ConducteurAccueilOnglet extends StatelessWidget {
         .toList()
       ..sort((a, b) => a.depart.compareTo(b.depart));
     final moisTotal = s.gainsDuMois.fold(0, (n, g) => n + g.total);
+    final courses = s.coursesPossibles;
+    final autres = s.passagersSansCourse;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -117,21 +120,41 @@ class ConducteurAccueilOnglet extends StatelessWidget {
                 icon: Icons.info_outline_rounded,
                 ton: TonPastille.etoile,
               ),
-            Btn.lat('Publier un trajet', icon: Icons.add_rounded, onPressed: () => ouvrir(context, const PublierEcran())),
-            if (actifs.isEmpty)
+            if (!s.estConducteur)
+              const _ActivationConducteur()
+            else
+              Btn.lat('Publier un trajet', icon: Icons.add_rounded, onPressed: () => ouvrir(context, const PublierEcran())),
+            if (courses.isNotEmpty) ...[
+              Row(
+                children: [
+                  const Icon(Icons.notifications_active_outlined, color: C.lateriteF, size: 20),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      courses.length > 1
+                          ? '${courses.length} courses possibles sur votre route'
+                          : 'Course possible sur votre route',
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: C.lateriteF),
+                    ),
+                  ),
+                ],
+              ),
+              for (final c in courses) _AlerteCourse(c),
+            ],
+            if (s.estConducteur && actifs.isEmpty)
               const Carte(
                 child: Text(
                   'Aucun trajet publié. Publiez votre premier trajet : les passagers le verront tout de suite.',
                   style: T.petit,
                 ),
               )
-            else ...[
+            else if (actifs.isNotEmpty) ...[
               const Doux('À venir', taille: 14, gras: true),
               for (final t in actifs) _CarteTrajetPublie(t),
             ],
-            if (s.demandesPourConducteur.isNotEmpty) ...[
-              const Doux('Passagers qui cherchent un trajet', taille: 14, gras: true),
-              for (final (d, t) in s.demandesPourConducteur) _CarteDemandePassager(d, t),
+            if (autres.isNotEmpty) ...[
+              Doux('Passagers inscrits qui cherchent un trajet · ${autres.length}', taille: 14, gras: true),
+              for (final d in autres) _CartePassagerInscrit(d),
             ],
             Carte(
               pointillee: true,
@@ -262,22 +285,22 @@ class _CarteTrajetPublie extends StatelessWidget {
   }
 }
 
-/// Un passager cherche un trajet : le conducteur propose une place sur un
-/// trajet publié qui passe par là, ou publie ce trajet.
-class _CarteDemandePassager extends StatelessWidget {
-  const _CarteDemandePassager(this.d, this.t);
-  final DemandeTrajet d;
-  final TrajetPublie? t;
+String _lieuCourt(Lieu l) => '${capitaliser(l.quartier)} (${villeCourte(l.ville)})';
+
+/// Alerte : un passager inscrit attend sur la route d'un trajet du
+/// conducteur, vers l'heure où il y passe. Le conducteur choisit.
+class _AlerteCourse extends StatelessWidget {
+  const _AlerteCourse(this.c);
+  final CoursePossible c;
 
   @override
   Widget build(BuildContext context) {
     final s = AppScope.of(context);
-    final trajet = t;
-    final c = trajet == null ? null : correspondance(trajet.ligne.depart, trajet.ligne.arrivee, d.depart, d.arrivee);
-    String lieu(Lieu l) => '${capitaliser(l.quartier)} (${villeCourte(l.ville)})';
+    final d = c.demande, t = c.trajet;
     return Carte(
-      bord: trajet == null ? C.trait : C.vert,
-      epaisseur: trajet == null ? 1.5 : 2.5,
+      couleur: C.etoileC,
+      bord: C.etoile,
+      epaisseur: 2.5,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -287,37 +310,145 @@ class _CarteDemandePassager extends StatelessWidget {
               const SizedBox(width: 12),
               Bloc(
                 d.passager.court,
-                '${jourRelatif(d.quand, s.maintenant)} ${heureCourte(d.quand)} · ${pluriel(d.places, 'place')}',
+                'Veut partir ${jourRelatif(d.quand, s.maintenant).toLowerCase()} à ${heure(d.quand)} · ${pluriel(d.places, 'place')}',
               ),
             ],
           ),
           const SizedBox(height: 10),
-          Text('${lieu(d.depart)} → ${lieu(d.arrivee)}', style: T.gras),
-          const SizedBox(height: 8),
-          if (trajet != null && c != null) ...[
-            Text(
-              'Sur votre trajet de ${heure(trajet.depart)} : montée ${ecartTexte(c.monte)}, dépose ${ecartTexte(c.descend)}.',
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: C.vertF),
-            ),
-            const SizedBox(height: 10),
-            Btn(
-              'Proposer une place',
-              hauteur: 50,
-              onPressed: () {
-                if (essayer(context, () => s.proposerPlace(d, trajet))) {
-                  message(context, '${d.passager.court} a accepté votre proposition (démonstration).');
-                }
-              },
-            ),
-          ] else ...[
-            const Doux('Aucun de vos trajets publiés ne passe par là ce jour-là.'),
-            const SizedBox(height: 10),
-            BtnClair(
-              'Publier ce trajet',
-              icon: Icons.add_rounded,
-              onPressed: () => ouvrir(context, PublierEcran(depart: d.depart, arrivee: d.arrivee, quand: d.quand)),
-            ),
+          Text('${_lieuCourt(d.depart)} → ${_lieuCourt(d.arrivee)}', style: T.gras),
+          const SizedBox(height: 6),
+          Text(
+            '${t.statut == StatutPublie.enCours ? 'Sur votre trajet en cours' : 'Sur votre trajet de ${heure(t.depart)}'} : '
+            'vous passez vers ${heure(c.passage)} (${ecartHoraire(c.ecart)}), '
+            'montée ${ecartTexte(c.croisement.monte)}, dépose ${ecartTexte(c.croisement.descend)}.',
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: C.vertF),
+          ),
+          if (d.exemple) ...[
+            const SizedBox(height: 6),
+            const Doux('Prototype : passager fictif.'),
           ],
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(child: BtnClair('Ignorer', onPressed: () => s.ignorerCourse(c))),
+              const SizedBox(width: 8),
+              Expanded(
+                flex: 2,
+                child: Btn(
+                  'Prendre la course',
+                  hauteur: 52,
+                  taille: 15,
+                  onPressed: () {
+                    if (essayer(context, () => s.prendreCourse(c))) {
+                      message(
+                        context,
+                        'Course acceptée : ${d.passager.court} vous attend à ${capitaliser(d.depart.quartier)} vers ${heure(c.passage)}.',
+                      );
+                    }
+                  },
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Passager inscrit qu'aucun trajet du conducteur ne croise encore : le
+/// conducteur accepte sa course en publiant le trajet, à son heure.
+class _CartePassagerInscrit extends StatelessWidget {
+  const _CartePassagerInscrit(this.d);
+  final DemandeTrajet d;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppScope.of(context);
+    return Carte(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Ava(d.passager.initiales, ton: d.passager.ton),
+              const SizedBox(width: 12),
+              Bloc(
+                d.passager.court,
+                '${jourRelatif(d.quand, s.maintenant)} à ${heure(d.quand)} · ${pluriel(d.places, 'place')}',
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text('${_lieuCourt(d.depart)} → ${_lieuCourt(d.arrivee)}', style: T.gras),
+          const SizedBox(height: 6),
+          const Doux('Aucun de vos trajets ne passe par là à cette heure.'),
+          const SizedBox(height: 10),
+          BtnClair(
+            'Accepter la course',
+            icon: Icons.add_rounded,
+            onPressed: () => s.estConducteur
+                ? ouvrir(context, PublierEcran(demande: d))
+                : informer(
+                    context,
+                    'Compte conducteur à activer',
+                    'Pour accepter la course de ${d.passager.court}, finissez votre inscription : documents, validation par l’équipe, abonnement.',
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Espace conducteur avant l'activation : où en est l'inscription.
+class _ActivationConducteur extends StatelessWidget {
+  const _ActivationConducteur();
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppScope.of(context);
+    final e = s.etapeConducteur;
+    final (label, ecran) = switch (e) {
+      EtapeConducteur.aucune => ('Envoyer mes documents', const DocumentsEcran() as Widget),
+      EtapeConducteur.documentsEnvoyes => ('Suivre ma validation', const ValidationEcran()),
+      _ => ('Choisir mon abonnement', const OffresEcran()),
+    };
+    return Carte(
+      bord: C.etoile,
+      epaisseur: 2.5,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text('Activez votre compte conducteur', style: T.gras),
+          const SizedBox(height: 4),
+          const Doux(
+            'Vous voyez déjà les passagers inscrits qui cherchent un trajet. '
+            'Pour publier vos trajets et accepter des courses :',
+            taille: 14,
+          ),
+          const SizedBox(height: 12),
+          Etape(
+            e == EtapeConducteur.aucune ? EtatEtape.encours : EtatEtape.fait,
+            'Envoyer vos documents',
+            'CNIB, permis, carte grise, assurance, photo du véhicule',
+          ),
+          Etape(
+            switch (e) {
+              EtapeConducteur.aucune => EtatEtape.afaire,
+              EtapeConducteur.documentsEnvoyes => EtatEtape.encours,
+              _ => EtatEtape.fait,
+            },
+            "Validation par l'équipe",
+            'Sous 48 h, avec un court entretien',
+          ),
+          Etape(
+            e == EtapeConducteur.valide ? EtatEtape.encours : EtatEtape.afaire,
+            'Choisir votre abonnement',
+            'Premier mois offert, sans engagement',
+          ),
+          Btn.lat(label, onPressed: () => ouvrir(context, ecran)),
+          Lien('Comment ça marche', souligne: false, onTap: () => ouvrir(context, const DevenirIntroEcran())),
         ],
       ),
     );
@@ -369,12 +500,16 @@ String _jours(Set<int> j) {
 // ---------------------------------------------------------------------------
 
 class PublierEcran extends StatefulWidget {
-  const PublierEcran({super.key, this.depart, this.arrivee, this.quand});
+  const PublierEcran({super.key, this.depart, this.arrivee, this.quand, this.demande});
 
-  /// Pré-remplissage, par exemple depuis la demande d'un passager.
+  /// Pré-remplissage.
   final Lieu? depart;
   final Lieu? arrivee;
   final DateTime? quand;
+
+  /// Course acceptée : le trajet part de l'adresse du passager, à son heure,
+  /// et le passager y est ajouté à la publication.
+  final DemandeTrajet? demande;
 
   @override
   State<PublierEcran> createState() => _PublierEcranState();
@@ -401,16 +536,19 @@ class _PublierEcranState extends State<PublierEcran> {
     final n = AppScope.read(context).maintenant;
     _date = jour(n).add(const Duration(days: 2));
     _prix = 0;
-    final q = widget.quand;
+    final dem = widget.demande;
+    final q = widget.quand ?? dem?.quand;
     if (q != null) {
       _date = jour(q);
       _heure = TimeOfDay(hour: q.hour, minute: q.minute);
     }
-    if (widget.depart != null) {
-      _lieuDepart = widget.depart!;
-      _rdv.text = widget.depart!.rdv ?? '';
+    final dep = widget.depart ?? dem?.depart;
+    if (dep != null) {
+      _lieuDepart = dep;
+      _rdv.text = dep.rdv ?? '';
     }
-    _lieuArrivee = widget.arrivee;
+    _lieuArrivee = widget.arrivee ?? dem?.arrivee;
+    if (dem != null && dem.places > _places) _places = dem.places.clamp(1, 4);
     final l = _ligne;
     if (l != null) _prix = calculerTarif(l).conseille;
   }
@@ -495,11 +633,30 @@ class _PublierEcranState extends State<PublierEcran> {
       );
     });
     if (!ok) return;
+    final publie = t!;
+    // Course acceptée depuis la demande d'un passager : il est ajouté au
+    // trajet si celui-ci passe toujours chez lui, à son heure.
+    final dem = widget.demande;
+    String? course;
+    if (dem != null) {
+      final c = s.coursePour(dem, publie);
+      if (c != null && essayer(context, () => s.prendreCourse(c))) {
+        course = 'Course acceptée : ${dem.passager.court} vous attend à ${capitaliser(dem.depart.quartier)} à ${heure(c.passage)}.';
+      } else {
+        course = "Trajet publié, mais il ne passe plus chez ${dem.passager.court} à son heure : sa demande reste visible.";
+      }
+    }
+    final alertes = s.coursesPour(publie).length;
     s.allerOnglet(0);
     Navigator.pop(context);
     message(
       context,
-      t!.exemple ? 'Trajet publié. Des demandes fictives arrivent pour la démonstration.' : 'Trajet publié.',
+      course ??
+          (alertes > 0
+              ? 'Trajet publié. ${alertes > 1 ? '$alertes passagers attendent' : 'Un passager attend'} sur votre route : voir l’alerte.'
+              : publie.exemple
+              ? 'Trajet publié. Des demandes fictives arrivent pour la démonstration.'
+              : 'Trajet publié.'),
     );
   }
 
@@ -509,10 +666,22 @@ class _PublierEcranState extends State<PublierEcran> {
     final ligne = _ligne;
     return Ecran(
       children: [
-        const Barre(titre: 'Publier un trajet'),
+        Barre(
+          titre: widget.demande == null ? 'Publier un trajet' : 'Accepter la course',
+          sousTitre: widget.demande?.passager.court,
+        ),
         Zone(
           gap: 14,
           children: [
+            if (widget.demande != null)
+              Bandeau(
+                '${widget.demande!.passager.court} veut partir ${jourRelatif(widget.demande!.quand, s.maintenant).toLowerCase()} '
+                'à ${heure(widget.demande!.quand)} de ${capitaliser(widget.demande!.depart.quartier)}. '
+                'Le trajet part de son adresse à son heure : vous pouvez changer votre départ, '
+                'tant que vous passez chez ${widget.demande!.passager.prenom} à peu près à cette heure.',
+                icon: Icons.notifications_active_outlined,
+                ton: TonPastille.etoile,
+              ),
             Carte(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1379,6 +1548,9 @@ class EnRouteConducteurEcran extends StatelessWidget {
     final bas = MediaQuery.paddingOf(context).bottom;
     final aBord = t.confirmes.where((p) => p.aBord).toList();
     final arrivee = t.depart.add(l.duree);
+    // En route : passagers qui attendent sur la route, et ceux à prendre en chemin.
+    final courses = s.coursesPour(t);
+    final aPrendre = t.confirmes.where((p) => !p.aBord && !p.absent).toList();
     return Scaffold(
       backgroundColor: C.sable2,
       body: Stack(
@@ -1426,6 +1598,26 @@ class EnRouteConducteurEcran extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: espacer([
+                  // Une alerte à la fois en conduisant : la plus proche dans le temps.
+                  if (courses.isNotEmpty) _AlerteEnRoute(courses.first, autres: courses.length - 1),
+                  for (final p in aPrendre)
+                    Row(
+                      children: [
+                        const Icon(Icons.person_pin_circle_outlined, color: C.laterite),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'À prendre : ${p.personne.court}${p.montee == null ? '' : ' · ${capitaliser(p.montee!.quartier)}'}',
+                            style: T.gras,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        SizedBox(
+                          width: 110,
+                          child: Btn('À bord', hauteur: 48, taille: 15, onPressed: () => s.monterEnChemin(t, p)),
+                        ),
+                      ],
+                    ),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
@@ -1488,6 +1680,78 @@ class EnRouteConducteurEcran extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Alerte compacte pendant le trajet : un passager attend sur la route.
+class _AlerteEnRoute extends StatelessWidget {
+  const _AlerteEnRoute(this.c, {this.autres = 0});
+  final CoursePossible c;
+
+  /// Autres courses possibles, affichées une fois celle-ci traitée.
+  final int autres;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppScope.of(context);
+    final d = c.demande;
+    return Semantics(
+      liveRegion: true,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: C.etoileC,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: C.etoile, width: 2),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.notifications_active_outlined, size: 22),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Course possible : ${d.passager.court} attend à ${capitaliser(d.depart.quartier)}, '
+                    '${ecartTexte(c.croisement.monte)} de votre route, vers ${heure(c.passage)}. '
+                    'Dépose : ${capitaliser(d.arrivee.quartier)}.',
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(child: BtnClair('Ignorer', hauteur: 48, onPressed: () => s.ignorerCourse(c))),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Btn(
+                    'Prendre',
+                    hauteur: 48,
+                    taille: 15,
+                    onPressed: () {
+                      if (essayer(context, () => s.prendreCourse(c))) {
+                        message(context, '${d.passager.court} vous attend à ${capitaliser(d.depart.quartier)}.');
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+            if (autres > 0) ...[
+              const SizedBox(height: 6),
+              Doux(
+                autres > 1 ? 'Encore $autres courses possibles ensuite.' : 'Encore une course possible ensuite.',
+                align: TextAlign.center,
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

@@ -729,7 +729,7 @@ class _UrgenceEcranState extends State<UrgenceEcran> {
     }
     _s.majUrgence(_nom.text, _tel.text, _lien);
     if (widget.inscription) {
-      _s.connecter();
+      _s.connecter(choisirEspace: true);
       retourAccueil(context);
     } else {
       Navigator.pop(context);
@@ -797,7 +797,7 @@ class _UrgenceEcranState extends State<UrgenceEcran> {
               couleur: C.doux,
               souligne: false,
               onTap: () {
-                _s.connecter();
+                _s.connecter(choisirEspace: true);
                 retourAccueil(context);
               },
             ),
@@ -805,6 +805,101 @@ class _UrgenceEcranState extends State<UrgenceEcran> {
       ),
     ],
   );
+}
+
+/// À l'entrée : passager ou conducteur. Être passager n'est pas obligatoire,
+/// un conducteur va directement dans son espace.
+class ChoixEspaceEcran extends StatelessWidget {
+  const ChoixEspaceEcran({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppScope.of(context);
+    Widget option({
+      required IconData icone,
+      required String titre,
+      required String sous,
+      required Color fond,
+      required Color encre,
+      required Mode espace,
+    }) => Semantics(
+      button: true,
+      label: '$titre. $sous',
+      excludeSemantics: true,
+      child: Carte(
+        onTap: () => s.choisirEspace(espace),
+        padding: const EdgeInsets.all(18),
+        child: Row(
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(color: fond, shape: BoxShape.circle),
+              child: Icon(icone, size: 28, color: encre),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(titre, style: T.titre(20)),
+                  const SizedBox(height: 4),
+                  Doux(sous, taille: 14),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(Icons.chevron_right_rounded),
+          ],
+        ),
+      ),
+    );
+    return Ecran(
+      children: [
+        Piste(
+          paddingBas: 30,
+          children: [
+            Text(
+              s.prenom.isEmpty ? 'Bienvenue' : 'Bienvenue, ${s.prenom}',
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 6),
+            const Titre('Comment utilisez-vous FasoCovoit ?'),
+            const SizedBox(height: 8),
+            const Text('Vous pourrez passer de l’un à l’autre à tout moment.', style: TextStyle(fontSize: 15)),
+          ],
+        ),
+        Zone(
+          children: [
+            option(
+              icone: Icons.person_outline_rounded,
+              titre: 'Je cherche un trajet',
+              sous: 'Passager : une place en ville ou entre villes, le jour et à l’heure de votre choix.',
+              fond: C.lateriteC,
+              encre: C.lateriteF,
+              espace: Mode.passager,
+            ),
+            option(
+              icone: Icons.directions_car_outlined,
+              titre: 'Je propose mes trajets',
+              sous: s.estConducteur
+                  ? 'Conducteur : votre compte est actif.'
+                  : 'Conducteur : partagez vos frais, sans avoir à être passager. Inscription en 3 étapes.',
+              fond: C.etoile,
+              encre: C.encre,
+              espace: Mode.conducteur,
+            ),
+            const Bandeau(
+              'Les passagers inscrits et leurs demandes sont visibles par les conducteurs. '
+              'Ceux qui passent par là sont alertés et choisissent les courses qui leur conviennent.',
+              icon: Icons.notifications_active_outlined,
+              ton: TonPastille.etoile,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 }
 
 /// 22 · Supprimer le compte (A6)

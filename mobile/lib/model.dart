@@ -146,24 +146,39 @@ double distanceKm(Lieu a, Lieu b) {
   return (t: t, km: math.sqrt((px - cx) * (px - cx) + (py - cy) * (py - cy)));
 }
 
-/// Croisement entre l'adresse d'un passager et le trajet d'un conducteur :
-/// distance de montée (au départ ou le long de la route) et de dépose.
+/// Croisement entre l'adresse d'un passager et la route d'un conducteur :
+/// écarts de montée et de dépose (km), et [fraction] de la route parcourue
+/// quand le passager monte (0 = départ du conducteur, 1 = arrivée).
+typedef Croisement = ({double monte, double descend, double fraction});
+
+/// Distance de montée (au départ ou le long de la route) et de dépose.
 /// Null si c'est trop loin ou dans le mauvais sens.
-({double monte, double descend})? correspondance(
+Croisement? correspondance(
   Lieu departTrajet,
   Lieu arriveeTrajet,
   Lieu depart,
   Lieu arrivee,
 ) {
-  final inter = departTrajet.ville != arriveeTrajet.ville;
+  // Rayon large seulement si le passager va lui aussi d'une ville à l'autre :
+  // pour un trajet en ville, il reste de 3 km, même sur la route d'un
+  // conducteur qui sort de la ville.
+  final inter = departTrajet.ville != arriveeTrajet.ville && depart.ville != arrivee.ville;
   final rayon = inter ? AppState.rayonInter : AppState.rayonVille;
   final m = projeter(depart, departTrajet, arriveeTrajet);
   final d = projeter(arrivee, departTrajet, arriveeTrajet);
-  final monte = math.min(distanceKm(depart, departTrajet), m.km);
+  final auDepart = distanceKm(depart, departTrajet);
+  final monte = math.min(auDepart, m.km);
   final descend = math.min(distanceKm(arrivee, arriveeTrajet), d.km);
   if (monte > rayon || descend > rayon) return null;
   if (m.t > d.t + 0.05) return null; // il faut descendre après être monté
-  return (monte: monte, descend: descend);
+  return (monte: monte, descend: descend, fraction: auDepart <= m.km ? 0.0 : m.t);
+}
+
+/// Heure à laquelle le conducteur passe prendre le passager, arrondie aux
+/// 5 minutes : départ du trajet plus la part de route déjà faite.
+DateTime heurePassage(DateTime depart, Duration duree, Croisement c) {
+  final h = depart.add(Duration(minutes: (duree.inMinutes * c.fraction).round()));
+  return DateTime(h.year, h.month, h.day, h.hour, h.minute - h.minute % 5);
 }
 
 /// « sur la route », « à 800 m », « à 2,4 km ».
@@ -183,14 +198,49 @@ class DemandeTrajet {
     required this.quand,
     this.places = 1,
     this.moi = false,
+    this.exemple = false,
   });
   final String id;
   final Personne passager;
   final Lieu depart;
   final Lieu arrivee;
+
+  /// Date et heure de départ choisies par le passager.
   final DateTime quand;
   final int places;
   final bool moi;
+
+  /// Démo : passager fictif.
+  final bool exemple;
+}
+
+/// Une course possible : un passager inscrit attend sur la route d'un trajet
+/// publié, à peu près à l'heure où le conducteur y passe.
+class CoursePossible {
+  const CoursePossible(this.demande, this.trajet, this.croisement, this.passage);
+  final DemandeTrajet demande;
+  final TrajetPublie trajet;
+  final Croisement croisement;
+
+  /// Heure de passage du conducteur à l'adresse du passager.
+  final DateTime passage;
+
+  /// Écart avec l'heure choisie par le passager (positif : le conducteur passe après).
+  Duration get ecart => passage.difference(demande.quand);
+
+  /// Recalculée à chaque lecture : même passager et même trajet, même course.
+  @override
+  bool operator ==(Object other) => other is CoursePossible && other.demande == demande && other.trajet == trajet;
+
+  @override
+  int get hashCode => Object.hash(demande, trajet);
+}
+
+/// « à l'heure », « 20 min après », « 1 h 30 avant ».
+String ecartHoraire(Duration d) {
+  final m = d.inMinutes.abs();
+  if (m < 5) return "à l'heure";
+  return '${duree(Duration(minutes: m))} ${d.isNegative ? 'avant' : 'après'}';
 }
 
 /// Minuscules sans accents, pour la recherche de lieux.
@@ -758,6 +808,29 @@ const documentsConducteur = <String, String>{
 
 enum Mode { passager, conducteur }
 
+// Conducteurs de démonstration (entre villes et en ville).
+const _issouf = Conducteur(
+  'Issouf',
+  'Kaboré',
+  ton: Ton.vert,
+  note: 4.9,
+  trajets: 37,
+  voiture: 'Toyota Corolla',
+  couleur: 'grise',
+  plaque: '11 HH 2345',
+  climatisee: true,
+);
+const _ousmane = Conducteur(
+  'Ousmane',
+  'Bationo',
+  ton: Ton.etoile,
+  note: 4.6,
+  trajets: 21,
+  voiture: 'Kia Picanto',
+  couleur: 'bleue',
+  plaque: '11 HB 7721',
+);
+
 class AppState extends ChangeNotifier {
   AppState({DateTime Function()? horloge, math.Random? alea})
     : _horloge = horloge ?? DateTime.now,
@@ -773,6 +846,10 @@ class AppState extends ChangeNotifier {
   // Compte
   bool connecte = false;
   Mode mode = Mode.passager;
+
+  /// À l'entrée, l'utilisateur choisit son espace : passager ou conducteur.
+  /// Être passager n'est pas obligatoire pour utiliser l'application.
+  bool espaceAChoisir = false;
 
   /// Onglet affiché dans la navigation du bas (passager ou conducteur).
   int onglet = 0;
@@ -874,6 +951,7 @@ class AppState extends ChangeNotifier {
     if (existe) {
       if (tel != _compteCharge) _reinitialiser(tel);
       connecte = true;
+      espaceAChoisir = true;
       mode = Mode.passager;
       onglet = 0;
     } else {
@@ -904,6 +982,7 @@ class AppState extends ChangeNotifier {
     suspenduJusquau = null;
     trajetsConducteur = 0;
     _exempleAjoute = false;
+    _coursesIgnorees.clear();
     _compteur = 0;
     _nResa = 0;
     mode = Mode.passager;
@@ -1025,15 +1104,29 @@ class AppState extends ChangeNotifier {
 
   // ------------------------------------------------------------------ compte
 
-  void connecter() {
+  /// Ouvre la session. Avec [choisirEspace], l'utilisateur choisit d'abord
+  /// s'il entre comme passager ou comme conducteur.
+  void connecter({bool choisirEspace = false}) {
     connecte = true;
+    espaceAChoisir = choisirEspace;
     mode = Mode.passager;
+    onglet = 0;
     _changer();
   }
 
   void deconnecter() {
     connecte = false;
+    espaceAChoisir = false;
     mode = Mode.passager;
+    _changer();
+  }
+
+  /// Choix fait à l'entrée. Le conducteur dont le compte n'est pas encore
+  /// actif arrive dans son espace, où il finit son inscription.
+  void choisirEspace(Mode m) {
+    mode = m;
+    onglet = 0;
+    espaceAChoisir = false;
     _changer();
   }
 
@@ -1066,10 +1159,9 @@ class AppState extends ChangeNotifier {
     _changer();
   }
 
+  /// Passe d'un espace à l'autre. L'espace conducteur est ouvert même avant
+  /// l'activation du compte : il guide alors vers l'inscription.
   void basculerMode(Mode m, {int onglet = 0}) {
-    if (m == Mode.conducteur && !estConducteur) {
-      throw ErreurMetier("Votre compte conducteur n'est pas encore actif.");
-    }
     mode = m;
     this.onglet = onglet;
     _changer();
@@ -1084,9 +1176,21 @@ class AppState extends ChangeNotifier {
   /// Passagers qui cherchent un trajet (les leurs et ceux des autres).
   final List<DemandeTrajet> demandesTrajet = [];
 
+  /// Écart toléré entre l'heure choisie par le passager et le passage du
+  /// conducteur à son adresse.
+  static const fenetreVille = Duration(minutes: 30);
+  static const fenetreInter = Duration(hours: 1);
+  static Duration fenetre(bool interVilles) => interVilles ? fenetreInter : fenetreVille;
+
   /// Croisement entre une offre et l'adresse du passager.
-  ({double monte, double descend})? correspondancePour(Trajet t, Lieu depart, Lieu arrivee) =>
+  Croisement? correspondancePour(Trajet t, Lieu depart, Lieu arrivee) =>
       correspondance(t.depart, t.arrivee, depart, arrivee);
+
+  /// Heure à laquelle le conducteur de [t] passe à l'adresse [depart].
+  DateTime passagePour(Trajet t, Lieu depart, Lieu arrivee) {
+    final c = correspondancePour(t, depart, arrivee);
+    return c == null ? t.heureDepart : heurePassage(t.heureDepart, t.duree, c);
+  }
 
   DemandeTrajet publierDemande({
     required Lieu depart,
@@ -1095,6 +1199,9 @@ class AppState extends ChangeNotifier {
     int places = 1,
   }) {
     if (depart == arrivee) throw ErreurMetier('Le départ et la destination doivent être différents.');
+    if (quand.isBefore(maintenant.subtract(const Duration(minutes: 5)))) {
+      throw ErreurMetier('Choisissez une date et une heure à venir.');
+    }
     final d = DemandeTrajet(
       id: 'D${demandesTrajet.length + 1}',
       passager: moi,
@@ -1114,30 +1221,74 @@ class AppState extends ChangeNotifier {
     _changer();
   }
 
-  /// Pour le conducteur : demandes des autres passagers, avec le trajet
-  /// publié qui leur correspond le mieux (ou null s'il n'y en a pas).
-  List<(DemandeTrajet, TrajetPublie?)> get demandesPourConducteur {
-    final resultat = <(DemandeTrajet, TrajetPublie?)>[];
+  /// Courses que le conducteur a écartées (« trajet/demande »).
+  final Set<String> _coursesIgnorees = {};
+
+  /// Le trajet [t] peut-il prendre le passager de [d] ? Il faut qu'il passe
+  /// près de son adresse, dans le bon sens, à peu près à l'heure choisie.
+  CoursePossible? coursePour(DemandeTrajet d, TrajetPublie t) {
+    if (d.moi) return null;
+    if (t.statut != StatutPublie.publie && t.statut != StatutPublie.enCours) return null;
+    if (t.places - t.reservees < d.places) return null;
+    if (t.entreFemmes && !d.passager.femme) return null;
+    if (t.passagers.any((p) => p.personne.complet == d.passager.complet)) return null;
+    final c = correspondance(t.ligne.depart, t.ligne.arrivee, d.depart, d.arrivee);
+    if (c == null) return null;
+    final passage = heurePassage(t.depart, t.ligne.duree, c);
+    if (passage.difference(d.quand).abs() > fenetre(t.ligne.interVilles)) return null;
+    return CoursePossible(d, t, c, passage);
+  }
+
+  /// Alertes du conducteur : les passagers inscrits qui attendent sur la
+  /// route d'un de ses trajets, vers l'heure où il y passe (une par passager).
+  List<CoursePossible> get coursesPossibles {
+    final resultat = <CoursePossible>[];
     for (final d in demandesTrajet.where((d) => !d.moi)) {
-      TrajetPublie? meilleur;
+      CoursePossible? meilleure;
       var score = double.infinity;
-      for (final t in trajetsPublies.where((t) => t.statut == StatutPublie.publie)) {
-        if (t.places - t.reservees < d.places) continue;
-        if (t.entreFemmes && !d.passager.femme) continue;
-        if (ecartJours(t.depart, d.quand) != 0) continue;
-        final c = correspondance(t.ligne.depart, t.ligne.arrivee, d.depart, d.arrivee);
-        if (c != null && c.monte + c.descend < score) {
-          score = c.monte + c.descend;
-          meilleur = t;
+      for (final t in trajetsPublies) {
+        if (_coursesIgnorees.contains('${t.id}/${d.id}')) continue;
+        final c = coursePour(d, t);
+        if (c == null) continue;
+        final s = c.ecart.inMinutes.abs() + 5 * (c.croisement.monte + c.croisement.descend);
+        if (s < score) {
+          score = s;
+          meilleure = c;
         }
       }
-      resultat.add((d, meilleur));
+      if (meilleure != null) resultat.add(meilleure);
     }
-    return resultat;
+    return resultat..sort((a, b) => a.passage.compareTo(b.passage));
+  }
+
+  List<CoursePossible> coursesPour(TrajetPublie t) =>
+      coursesPossibles.where((c) => c.trajet == t).toList();
+
+  /// Tous les passagers inscrits qui cherchent un trajet et qu'aucun trajet
+  /// du conducteur ne croise : il peut accepter leur course en la publiant.
+  List<DemandeTrajet> get passagersSansCourse {
+    final avecCourse = {for (final c in coursesPossibles) c.demande};
+    return demandesTrajet.where((d) => !d.moi && !avecCourse.contains(d)).toList()
+      ..sort((a, b) => a.quand.compareTo(b.quand));
+  }
+
+  void ignorerCourse(CoursePossible c) {
+    _coursesIgnorees.add('${c.trajet.id}/${c.demande.id}');
+    _changer();
+  }
+
+  /// Le conducteur prend la course sur un trajet qui passe par là.
+  void prendreCourse(CoursePossible c) {
+    if (coursePour(c.demande, c.trajet) == null) {
+      throw ErreurMetier("Ce trajet ne passe plus par l'adresse de ${c.demande.passager.court} à son heure.");
+    }
+    proposerPlace(c.demande, c.trajet);
   }
 
   /// Le conducteur propose une place : démo, le passager accepte aussitôt.
   void proposerPlace(DemandeTrajet d, TrajetPublie t) {
+    if (!estConducteur) throw ErreurMetier('Activez votre compte conducteur pour accepter des courses.');
+    if (!demandesTrajet.contains(d)) throw ErreurMetier("Ce passager n'attend plus.");
     if (t.places - t.reservees < d.places) throw ErreurMetier('Plus assez de places libres sur ce trajet.');
     t.passagers.add(
       Passager(
@@ -1156,12 +1307,73 @@ class AppState extends ChangeNotifier {
     _changer();
   }
 
-  /// Trajets disponibles. Avec [depart] et [arrivee] : entre villes, mêmes
-  /// villes ; en ville, départ et arrivée à moins de [rayonVille] km.
+  /// Un passager pris en route monte à bord.
+  void monterEnChemin(TrajetPublie t, Passager p) {
+    p.aBord = true;
+    _changer();
+  }
+
+  /// Démo : un conducteur inscrit qui passe par là accepte la demande du
+  /// passager. Il vient le prendre à son adresse, à la date et l'heure choisies.
+  Reservation simulerPriseEnCharge(DemandeTrajet d) {
+    if (!d.moi || !demandesTrajet.contains(d)) throw ErreurMetier("Cette demande n'est plus active.");
+    final inter = d.depart.ville != d.arrivee.ville;
+    final c = inter ? _issouf : _ousmane;
+    final ligne = Ligne.entre(d.depart, d.arrivee);
+    final prix = calculerTarif(ligne).conseille;
+    final trajet = Trajet(
+      id: 'c${trajets.length + 1}',
+      conducteur: c,
+      depart: d.depart,
+      arrivee: d.arrivee,
+      rdv: d.depart.rdv ?? 'À votre adresse',
+      heureDepart: d.quand.isBefore(maintenant) ? maintenant : d.quand,
+      duree: ligne.duree,
+      km: ligne.km,
+      prix: prix,
+      places: math.max(3, d.places),
+      placesPrises: d.places,
+      interVilles: inter,
+    );
+    trajets.add(trajet);
+    final resa = Reservation(
+      ref: _ref(),
+      trajet: trajet,
+      places: d.places,
+      paiement: Paiement.especes,
+      montant: d.places * prix,
+      code: _code(),
+      creeLe: maintenant,
+      statut: StatutResa.confirmee,
+      montee: d.depart,
+      descente: d.arrivee,
+    );
+    reservations.add(resa);
+    demandesTrajet.remove(d);
+    final quand = '${jourRelatif(trajet.heureDepart, maintenant).toLowerCase()} à ${heure(trajet.heureDepart)}';
+    _notifier(
+      TypeNotif.acceptee,
+      'Course acceptée',
+      '${c.court} passe vous prendre $quand à ${capitaliser(d.depart.quartier)}.',
+    );
+    _conversationAvec(
+      c,
+      trajet,
+      messages: ['Bonjour $prenom, je passe vous prendre $quand à ${capitaliser(d.depart.quartier)}.'],
+    );
+    _changer();
+    return resa;
+  }
+
+  /// Trajets disponibles. Avec [depart] et [arrivee] : croisement avec
+  /// l'adresse du passager. Avec [quand] : le conducteur passe ce jour-là,
+  /// pas avant l'heure choisie (moins la tolérance). Sans [quand] : dès
+  /// maintenant.
   List<Trajet> rechercher({
     bool? interVilles,
     Lieu? depart,
     Lieu? arrivee,
+    DateTime? quand,
     int places = 1,
     bool conductrices = false,
     bool matin = false,
@@ -1171,8 +1383,12 @@ class AppState extends ChangeNotifier {
       if (t.interVilles != inter) return false;
       // Croisement avec l'adresse du passager : montée au départ ou sur la
       // route, dépose près de son adresse, dans le bon sens.
-      if (depart != null && arrivee != null && correspondancePour(t, depart, arrivee) == null) {
-        return false;
+      final c = depart != null && arrivee != null ? correspondancePour(t, depart, arrivee) : null;
+      if (depart != null && arrivee != null && c == null) return false;
+      if (quand != null) {
+        final passage = c == null ? t.heureDepart : heurePassage(t.heureDepart, t.duree, c);
+        if (ecartJours(passage, quand) != 0) return false;
+        if (passage.isBefore(quand.subtract(fenetre(t.interVilles)))) return false;
       }
       if (!t.heureDepart.isAfter(maintenant)) return false;
       if (t.placesLibres < places) return false;
@@ -1606,9 +1822,38 @@ class AppState extends ChangeNotifier {
       _exempleAjoute = true;
       t.exemple = true;
       _ajouterDemandesExemple(t);
+      _ajouterCourseExemple(t);
     }
     _changer();
     return t;
+  }
+
+  /// Démo : un passager fictif attend le long de la route du premier trajet
+  /// publié, à l'heure où le conducteur y passe : l'alerte s'affiche.
+  void _ajouterCourseExemple(TrajetPublie t) {
+    final l = t.ligne;
+    (Lieu, Lieu, Croisement)? meilleur;
+    for (final a in lieux.where((x) => x.ville == l.depart.ville && x != l.depart)) {
+      for (final b in lieux.where((x) => x.ville == l.arrivee.ville && x != l.arrivee && x != a)) {
+        final c = correspondance(l.depart, l.arrivee, a, b);
+        if (c == null || c.monte < 0.3) continue;
+        if (meilleur == null || c.monte + c.descend < meilleur.$3.monte + meilleur.$3.descend) {
+          meilleur = (a, b, c);
+        }
+      }
+    }
+    if (meilleur == null) return;
+    final (a, b, c) = meilleur;
+    demandesTrajet.add(
+      DemandeTrajet(
+        id: 'D-route',
+        passager: const Personne('Adama', 'Kinda', ton: Ton.vert),
+        depart: a,
+        arrivee: b,
+        quand: heurePassage(t.depart, l.duree, c),
+        exemple: true,
+      ),
+    );
   }
 
   void _ajouterDemandesExemple(TrajetPublie t) {
@@ -1826,17 +2071,7 @@ class AppState extends ChangeNotifier {
       return DateTime(t.year, t.month, t.day, t.hour, t.minute - t.minute % 5);
     }
 
-    const issouf = Conducteur(
-      'Issouf',
-      'Kaboré',
-      ton: Ton.vert,
-      note: 4.9,
-      trajets: 37,
-      voiture: 'Toyota Corolla',
-      couleur: 'grise',
-      plaque: '11 HH 2345',
-      climatisee: true,
-    );
+    const issouf = _issouf;
     const aminata = Conducteur(
       'Aminata',
       'Sawadogo',
@@ -1857,16 +2092,7 @@ class AppState extends ChangeNotifier {
       couleur: 'grise',
       plaque: '11 GK 8812',
     );
-    const ousmane = Conducteur(
-      'Ousmane',
-      'Bationo',
-      ton: Ton.etoile,
-      note: 4.6,
-      trajets: 21,
-      voiture: 'Kia Picanto',
-      couleur: 'bleue',
-      plaque: '11 HB 7721',
-    );
+    const ousmane = _ousmane;
     const salif = Conducteur(
       'Salif',
       'Tiendrébéogo',

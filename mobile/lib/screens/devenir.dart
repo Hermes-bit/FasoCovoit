@@ -344,7 +344,10 @@ class ValidationEcran extends StatelessWidget {
                 s.basculerMode(Mode.conducteur);
                 retourAccueil(context);
               }),
-            BtnClair('Revenir au mode passager', onPressed: () => retourAccueil(context)),
+            BtnClair(
+              s.mode == Mode.conducteur ? 'Retour à mon espace conducteur' : 'Revenir au mode passager',
+              onPressed: () => retourAccueil(context),
+            ),
           ],
         ),
       ],
@@ -652,7 +655,7 @@ class AboActifEcran extends StatelessWidget {
                     },
                   ),
                   Lien(
-                    'Revenir au mode passager',
+                    s.mode == Mode.conducteur ? 'Aller à mon espace conducteur' : 'Revenir au mode passager',
                     couleur: Colors.white,
                     souligne: false,
                     taille: 16,

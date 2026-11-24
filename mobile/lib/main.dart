@@ -32,7 +32,8 @@ class FasoCovoitApp extends StatelessWidget {
   );
 }
 
-/// Bienvenue hors connexion, puis espace passager ou conducteur.
+/// Bienvenue hors connexion, choix de l'espace à l'entrée, puis espace
+/// passager ou conducteur.
 class Racine extends StatelessWidget {
   const Racine({super.key});
 
@@ -40,6 +41,7 @@ class Racine extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = AppScope.of(context);
     if (!s.connecte) return const BienvenueEcran();
+    if (s.espaceAChoisir) return const ChoixEspaceEcran();
     return s.mode == Mode.conducteur ? const EspaceConducteur() : const EspacePassager();
   }
 }

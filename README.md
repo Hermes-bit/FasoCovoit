@@ -52,6 +52,21 @@ polices Figtree et Bricolage Grotesque, en-tête « piste », billet) :
   choisi ; pendant le trajet, « Itinéraire » ouvre Google Maps vers la
   destination. Les coordonnées des quartiers sont approximatives : la recherche
   Google Places pourra les remplacer.
+- **Date et heure du départ** : le passager choisit le jour et l'heure où il
+  veut partir (ou « Partir maintenant »). La recherche ne garde que les
+  conducteurs qui passent à son adresse ce jour-là, pas avant l'heure choisie
+  (moins 1 h entre villes, 30 min en ville), et donne l'heure de passage quand
+  il monte en chemin.
+- **Croisement des adresses** : un trajet convient si le passager peut monter au
+  départ ou le long de la route et descendre près de son adresse, dans le bon
+  sens (8 km entre villes, 3 km pour un trajet en ville). Sans offre, il publie
+  sa demande, visible dans « Mes trajets ».
+- **Alertes de course** : tous les passagers inscrits qui cherchent un trajet
+  sont visibles par les conducteurs. Quand la route d'un conducteur passe chez
+  l'un d'eux à peu près à son heure, l'application l'alerte (accueil, badge,
+  écran du trajet en cours) : il prend la course ou l'ignore. Pour un passager
+  qu'aucun trajet ne croise, « Accepter la course » publie le trajet depuis son
+  adresse, à son heure, et l'y ajoute.
 - **Colis** : aperçu des écrans de la version 2.
 
 Les règles de la maquette sont réellement calculées : plafond et prix conseillé
@@ -67,7 +82,13 @@ suspension du conducteur après 3 annulations en 30 jours.
 - Tout autre numéro crée un **nouveau compte vierge** (portefeuille à 0 F) après
   le profil et le contact d'urgence. Un numéro inconnu saisi dans « J'ai déjà un
   compte » propose de créer le compte.
-- Le code à 6 chiffres expire après 5 minutes et 5 essais. Aucun fournisseur SMS
+- À l'entrée, l'utilisateur choisit son espace : **« Je cherche un trajet »**
+  (passager) ou **« Je propose mes trajets »** (conducteur). Être passager n'est
+  pas obligatoire : un conducteur arrive directement dans son espace, où il
+  finit son inscription (documents, validation, abonnement). La bascule
+  Passager / Conducteur des en-têtes permet de changer à tout moment.
+- Le code à 6 chiffres expire après 10 minutes ; après 5 codes faux, le numéro
+  est bloqué 15 minutes. Aucun fournisseur SMS
   n'est encore branché : l'application affiche le SMS reçu (simulation) et il
   faut recopier le code.
 - « Continuer avec Google » est affiché mais pas encore actif. Il faudra des
@@ -87,6 +108,12 @@ la barre du navigateur.
 - Au premier trajet publié, deux demandes fictives arrivent. Les codes de départ
   de ces passagers sont affichés à l'écran ; le scanner propose de simuler son
   résultat (la caméra n'est pas encore utilisée).
+- Au premier trajet publié, un passager fictif attend aussi le long de la route,
+  à l'heure du passage : l'alerte de course s'affiche. Des passagers de
+  démonstration (Fatou S., Salam O., Ali K.) cherchent déjà un trajet.
+- Côté passager, « Simuler la réponse d'un conducteur » (dans « Mes trajets »)
+  fait accepter la demande par un conducteur, qui vient le prendre à son adresse
+  à la date et à l'heure choisies.
 
 Le code est organisé ainsi dans `mobile/lib` : `model.dart` (règles et données
 en mémoire), `ui.dart` et `theme.dart` (composants du thème), `screens/`

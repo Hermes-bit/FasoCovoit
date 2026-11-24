@@ -81,6 +81,10 @@ void main() {
     await tester.enterText(find.byType(TextField).at(1), '+226 76 11 22 33');
     await toucher(tester, bouton('Terminer'));
 
+    // À l'entrée, on choisit son espace.
+    expect(find.text('Comment utilisez-vous FasoCovoit ?'), findsOneWidget);
+    await toucher(tester, find.text('Je cherche un trajet'));
+
     expect(s.connecte, isTrue);
     expect(s.telephone, '76 54 32 10');
     expect(s.solde, 0);
@@ -105,8 +109,54 @@ void main() {
     await tester.enterText(find.byType(TextField), s.dernierCodeSms!);
     await toucher(tester, bouton('Me connecter'));
     expect(s.connecte, isTrue);
+    expect(find.text('Comment utilisez-vous FasoCovoit ?'), findsOneWidget);
+    await toucher(tester, find.text('Je cherche un trajet'));
     expect(s.solde, 7500);
     expect(find.text('Ne y windiga, Hermès'), findsOneWidget);
+  });
+
+  testWidgets('conducteur dès l’entrée, sans passer par l’espace passager', (tester) async {
+    final s = await lancer(tester);
+    await toucher(tester, find.text("J'ai déjà un compte"));
+    await toucher(tester, bouton('Recevoir le code'));
+    await tester.enterText(find.byType(TextField), s.dernierCodeSms!);
+    await toucher(tester, bouton('Me connecter'));
+
+    await toucher(tester, find.text('Je propose mes trajets'));
+    expect(s.mode, Mode.conducteur);
+    expect(find.text('Mode conducteur'), findsOneWidget);
+    expect(find.text('Activez votre compte conducteur'), findsOneWidget);
+    // Les passagers inscrits sont déjà visibles.
+    expect(find.textContaining('Passagers inscrits qui cherchent un trajet'), findsOneWidget);
+    expect(find.text('Fatou S.'), findsOneWidget);
+
+    await toucher(tester, find.widgetWithText(Btn, 'Envoyer mes documents'));
+    expect(find.text('0 documents sur 5'), findsOneWidget);
+  });
+
+  testWidgets('passager : choisir la date et l’heure, publier sa demande, un conducteur vient', (tester) async {
+    final s = await lancer(tester, connecte: true);
+    await toucher(tester, find.text('Demain, mer. 25 nov. · 7 h 00'));
+    // Calendrier puis horloge.
+    await toucher(tester, find.text('26'));
+    await toucher(tester, find.text('OK'));
+    await toucher(tester, find.text('OK'));
+    expect(find.text('Jeu. 26 nov. · 7 h 00'), findsOneWidget);
+
+    await toucher(tester, bouton('Rechercher'));
+    expect(find.textContaining('Aucun conducteur ne passe par là jeu. 26 nov. vers 7 h'), findsOneWidget);
+    await toucher(tester, find.widgetWithText(BtnClair, 'Publier ma demande'));
+    final d = s.demandesTrajet.singleWhere((d) => d.moi);
+    expect(d.quand, DateTime(2026, 11, 26, 7));
+
+    tester.state<NavigatorState>(find.byType(Navigator)).pop();
+    await tester.pumpAndSettle();
+    await toucher(tester, find.text('Mes trajets').last);
+    expect(find.text('En attente d’un conducteur'), findsOneWidget);
+    await toucher(tester, bouton('Simuler la réponse d’un conducteur'));
+    final r = s.reservations.singleWhere((r) => r.montee == d.depart && r.trajet.heureDepart == d.quand);
+    expect(r.statut, StatutResa.confirmee);
+    expect(find.text('En attente d’un conducteur'), findsNothing);
   });
 
   testWidgets('numéro inconnu sur « J’ai déjà un compte » : création proposée', (tester) async {
@@ -226,5 +276,14 @@ void main() {
     expect(s.trajetsPublies.single.ligne.arrivee, lKoudS7);
     expect(find.text('Bonjour Hermès'), findsOneWidget);
     expect(find.text('1 demande à traiter'), findsOneWidget);
+
+    // Des passagers attendent sur sa route : il est alerté et choisit.
+    final avant = s.coursesPossibles.length;
+    expect(avant, greaterThan(0));
+    expect(find.widgetWithText(Btn, 'Prendre la course'), findsNWidgets(avant));
+    await toucher(tester, find.widgetWithText(Btn, 'Prendre la course').first);
+    // Moins d'alertes : celle prise, et celles qui n'ont plus assez de places.
+    expect(s.coursesPossibles.length, lessThan(avant));
+    expect(find.textContaining('Course acceptée'), findsOneWidget);
   });
 }

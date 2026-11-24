@@ -12,7 +12,6 @@ import '../photo.dart';
 import '../theme.dart';
 import '../ui.dart';
 import 'colis.dart';
-import 'devenir.dart';
 import 'jour_j.dart';
 import 'lieux.dart';
 import 'messages_profil.dart';
@@ -86,11 +85,9 @@ class BasculeMode extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           pilule('Passager', !conducteur, conducteur ? () => s.basculerMode(Mode.passager) : null),
-          pilule('Conducteur', conducteur, conducteur
-              ? null
-              : () => s.estConducteur
-                    ? s.basculerMode(Mode.conducteur)
-                    : ouvrir(context, const DevenirIntroEcran())),
+          // L'espace conducteur s'ouvre même avant l'activation du compte :
+          // il guide alors vers l'inscription.
+          pilule('Conducteur', conducteur, conducteur ? null : () => s.basculerMode(Mode.conducteur)),
         ],
       ),
     );
@@ -114,7 +111,43 @@ class _AccueilOngletState extends State<AccueilOnglet> {
   int _places = 1;
   bool _femmes = false;
 
+  /// Date et heure de départ choisies ; null : maintenant.
+  DateTime? _quand;
+
   bool get _inter => _depart.ville != _arrivee.ville;
+
+  @override
+  void initState() {
+    super.initState();
+    _quand = _demainMatin(AppScope.read(context).maintenant);
+  }
+
+  static DateTime _demainMatin(DateTime n) => DateTime(n.year, n.month, n.day + 1, 7);
+
+  Future<void> _choisirQuand() async {
+    final n = AppScope.read(context).maintenant;
+    final base = _quand ?? n;
+    final d = await showDatePicker(
+      context: context,
+      initialDate: jour(base),
+      firstDate: jour(n),
+      lastDate: jour(n).add(const Duration(days: 60)),
+      helpText: 'Date du départ',
+    );
+    if (d == null || !mounted) return;
+    final h = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(base),
+      helpText: 'Heure du départ',
+    );
+    if (h == null || !mounted) return;
+    final q = DateTime(d.year, d.month, d.day, h.hour, h.minute);
+    if (q.isBefore(n)) {
+      message(context, 'Cette heure est passée : choisissez une heure à venir.');
+      return;
+    }
+    setState(() => _quand = q);
+  }
 
   Future<void> _choisir({required bool depart}) async {
     final l = await choisirLieu(
@@ -173,9 +206,11 @@ class _AccueilOngletState extends State<AccueilOnglet> {
                 if (i == 1 && !_inter) {
                   _depart = lOuagaGare;
                   _arrivee = lKoudCentre;
+                  _quand ??= _demainMatin(s.maintenant);
                 } else if (i == 0 && _inter) {
                   _depart = lDassasgho;
                   _arrivee = lOuaga2000;
+                  _quand = null;
                 }
               }),
             ),
@@ -210,11 +245,37 @@ class _AccueilOngletState extends State<AccueilOnglet> {
                   const SizedBox(height: 16),
                   Row(
                     children: [
-                      const Icon(Icons.calendar_today_outlined, size: 22),
-                      const SizedBox(width: 8),
                       Expanded(
-                        child: Text(_inter ? 'Demain, 7 h' : 'Maintenant', style: T.gras),
+                        child: Semantics(
+                          button: true,
+                          label: 'Départ : ${texteQuand(_quand, s.maintenant)}. Choisir la date et l’heure',
+                          excludeSemantics: true,
+                          child: InkWell(
+                            onTap: _choisirQuand,
+                            borderRadius: BorderRadius.circular(12),
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(minHeight: 48),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.calendar_today_outlined, size: 22),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Doux('Départ'),
+                                        Text(texteQuand(_quand, s.maintenant), style: T.gras),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
+                      const SizedBox(width: 8),
                       Compteur(
                         valeur: _places,
                         grand: false,
@@ -225,6 +286,11 @@ class _AccueilOngletState extends State<AccueilOnglet> {
                       ),
                     ],
                   ),
+                  if (_quand != null)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Lien('Partir maintenant', onTap: () => setState(() => _quand = null)),
+                    ),
                 ],
               ),
             ),
@@ -245,7 +311,13 @@ class _AccueilOngletState extends State<AccueilOnglet> {
               icon: Icons.search_rounded,
               onPressed: () => ouvrir(
                 context,
-                ResultatsEcran(depart: _depart, arrivee: _arrivee, places: _places, conductrices: _femmes),
+                ResultatsEcran(
+                  depart: _depart,
+                  arrivee: _arrivee,
+                  quand: _quand,
+                  places: _places,
+                  conductrices: _femmes,
+                ),
               ),
             ),
             Column(
@@ -292,17 +364,25 @@ class _AccueilOngletState extends State<AccueilOnglet> {
 // 07 · Résultats (B3)
 // ---------------------------------------------------------------------------
 
+/// « Maintenant » ou « Demain, mer. 25 nov. · 7 h 00 ».
+String texteQuand(DateTime? quand, DateTime maintenant) =>
+    quand == null ? 'Maintenant' : '${jourRelatifComplet(quand, maintenant)} · ${heure(quand)}';
+
 class ResultatsEcran extends StatefulWidget {
   const ResultatsEcran({
     super.key,
     required this.depart,
     required this.arrivee,
     required this.places,
+    this.quand,
     this.conductrices = false,
   });
   final Lieu depart;
   final Lieu arrivee;
   final int places;
+
+  /// Date et heure de départ choisies ; null : maintenant.
+  final DateTime? quand;
   final bool conductrices;
 
   bool get interVilles => depart.ville != arrivee.ville;
@@ -319,24 +399,24 @@ class _ResultatsEcranState extends State<ResultatsEcran> {
   Widget build(BuildContext context) {
     final s = AppScope.of(context);
     final d = widget.depart, a = widget.arrivee;
-    final tous = s.rechercher(depart: d, arrivee: a, places: widget.places);
+    final q = widget.quand;
+    final tous = s.rechercher(depart: d, arrivee: a, quand: q, places: widget.places);
     final liste = s.rechercher(
       depart: d,
       arrivee: a,
+      quand: q,
       places: widget.places,
       conductrices: _conductrices,
       matin: _matin,
     );
     final ligne = Ligne.entre(d, a);
     final tarif = calculerTarif(ligne);
-    final quand = widget.interVilles
-        ? jourRelatifComplet(s.maintenant.add(const Duration(days: 1)), s.maintenant)
-        : 'Maintenant';
+    final vers = q == null ? '' : ' vers ${heureCourte(q)}';
     return Ecran(
       children: [
         Barre(
           titre: widget.interVilles ? '${d.ville} → ${a.ville}' : '${capitaliser(d.quartier)} → ${capitaliser(a.quartier)}',
-          sousTitre: '$quand · ${pluriel(widget.places, 'place')}',
+          sousTitre: '${texteQuand(q, s.maintenant)} · ${pluriel(widget.places, 'place')}',
         ),
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
@@ -383,8 +463,11 @@ class _ResultatsEcranState extends State<ResultatsEcran> {
               Carte(
                 child: Text(
                   tous.isEmpty
-                      ? 'Aucun conducteur ne propose encore ce trajet. Essayez un lieu proche, '
-                            'ou les trajets de démonstration : Ouaga → Koudougou, Dassasgho → Ouaga 2000.'
+                      ? (q == null
+                            ? 'Aucun conducteur ne propose encore ce trajet. Essayez un lieu proche, '
+                                  'ou les trajets de démonstration : Ouaga → Koudougou, Dassasgho → Ouaga 2000.'
+                            : 'Aucun conducteur ne passe par là ${jourRelatif(q, s.maintenant).toLowerCase()}$vers. '
+                                  'Publiez votre demande : les conducteurs qui y passent seront alertés.')
                       : 'Aucun trajet ne correspond. Essayez sans filtre ou à un autre horaire.',
                   style: T.petit,
                 ),
@@ -393,7 +476,11 @@ class _ResultatsEcranState extends State<ResultatsEcran> {
               CarteTrajet(
                 trajet: liste[i],
                 selection: i == 0,
-                croisement: texteCroisement(s.correspondancePour(liste[i], d, a)),
+                croisement: texteCroisement(
+                  s.correspondancePour(liste[i], d, a),
+                  passage: s.passagePour(liste[i], d, a),
+                  depart: liste[i].heureDepart,
+                ),
                 onTap: () => ouvrir(
                   context,
                   FicheEcran(trajet: liste[i], places: widget.places, montee: d, descente: a),
@@ -408,8 +495,8 @@ class _ResultatsEcranState extends State<ResultatsEcran> {
                   Text(liste.isEmpty ? 'Publiez votre demande' : 'Aucune offre ne vous convient ?', style: T.gras),
                   const SizedBox(height: 4),
                   Doux(
-                    'Les conducteurs qui passent par ${capitaliser(d.quartier)} et ${capitaliser(a.quartier)} '
-                    'verront votre demande et pourront vous proposer une place.',
+                    'Tous les conducteurs inscrits la voient. Ceux qui passent par ${capitaliser(d.quartier)} '
+                    'et ${capitaliser(a.quartier)}$vers sont alertés : celui qui accepte vient vous prendre à l’heure choisie.',
                     taille: 14,
                   ),
                   const SizedBox(height: 10),
@@ -417,14 +504,11 @@ class _ResultatsEcranState extends State<ResultatsEcran> {
                     'Publier ma demande',
                     icon: Icons.campaign_outlined,
                     onPressed: () {
-                      final quand = widget.interVilles
-                          ? DateTime(s.maintenant.year, s.maintenant.month, s.maintenant.day + 1, 7)
-                          : s.maintenant;
                       if (essayer(
                         context,
-                        () => s.publierDemande(depart: d, arrivee: a, quand: quand, places: widget.places),
+                        () => s.publierDemande(depart: d, arrivee: a, quand: q ?? s.maintenant, places: widget.places),
                       )) {
-                        message(context, 'Demande publiée : les conducteurs qui passent par là la voient.');
+                        message(context, 'Demande publiée : retrouvez-la dans « Mes trajets ».');
                       }
                     },
                   ),
@@ -441,10 +525,14 @@ class _ResultatsEcranState extends State<ResultatsEcran> {
   }
 }
 
-/// « Montée sur la route · dépose à 800 m de votre adresse ».
-String? texteCroisement(({double monte, double descend})? c) {
+/// « Montée sur la route, vers 7 h 15 · dépose à 800 m de votre adresse ».
+/// L'heure de passage n'est donnée que si le passager monte en chemin.
+String? texteCroisement(Croisement? c, {DateTime? passage, DateTime? depart}) {
   if (c == null) return null;
-  return 'Montée ${ecartTexte(c.monte)} · dépose ${ecartTexte(c.descend)} de votre adresse';
+  final vers = passage != null && depart != null && passage.difference(depart).inMinutes >= 5
+      ? ', vers ${heure(passage)}'
+      : '';
+  return 'Montée ${ecartTexte(c.monte)}$vers · dépose ${ecartTexte(c.descend)} de votre adresse';
 }
 
 class CarteTrajet extends StatelessWidget {
@@ -639,7 +727,11 @@ class _FicheEcranState extends State<FicheEcran> {
                         const Text('Votre trajet', style: T.gras),
                         const SizedBox(height: 6),
                         Text('Vous montez : ${widget.montee!.complet}', style: T.petit),
-                        if (c != null) Doux('Départ du conducteur ${ecartTexte(c.monte)}'),
+                        if (c != null)
+                          Doux(
+                            'Départ du conducteur ${ecartTexte(c.monte)} · il passe vers '
+                            '${heure(heurePassage(t.heureDepart, t.duree, c))}',
+                          ),
                         const SizedBox(height: 6),
                         Text('Vous descendez : ${widget.descente!.complet}', style: T.petit),
                         if (c != null) Doux('Dépose ${ecartTexte(c.descend)} de votre adresse'),
@@ -1368,6 +1460,7 @@ class _MesTrajetsOngletState extends State<MesTrajetsOnglet> {
     final s = AppScope.of(context);
     final aVenir = s.aVenir;
     final passes = s.passees;
+    final demandes = s.demandesTrajet.where((d) => d.moi).toList()..sort((a, b) => a.quand.compareTo(b.quand));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1382,7 +1475,8 @@ class _MesTrajetsOngletState extends State<MesTrajetsOnglet> {
               onChanged: (i) => setState(() => _aVenir = i == 0),
             ),
             if (_aVenir) ...[
-              if (aVenir.isEmpty) ...[
+              for (final d in demandes) _CarteMaDemande(d),
+              if (aVenir.isEmpty && demandes.isEmpty) ...[
                 const Carte(child: Text('Aucun trajet à venir.', style: T.petit)),
                 Btn('Rechercher un trajet', onPressed: () => s.allerOnglet(0)),
               ],
@@ -1394,6 +1488,73 @@ class _MesTrajetsOngletState extends State<MesTrajetsOnglet> {
           ],
         ),
       ],
+    );
+  }
+}
+
+/// Demande publiée par le passager : visible par tous les conducteurs
+/// inscrits, en attente qu'un conducteur qui passe par là l'accepte.
+class _CarteMaDemande extends StatelessWidget {
+  const _CarteMaDemande(this.d);
+  final DemandeTrajet d;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppScope.of(context);
+    final inter = d.depart.ville != d.arrivee.ville;
+    return Carte(
+      pointillee: true,
+      bord: C.laterite,
+      epaisseur: 1.5,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Align(
+            alignment: Alignment.centerLeft,
+            child: Pastille('En attente d’un conducteur', ton: TonPastille.etoile, icon: Icons.campaign_outlined),
+          ),
+          const SizedBox(height: 12),
+          RouteRail(
+            haut: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('${jourRelatif(d.quand, s.maintenant)} · ${heure(d.quand)}', style: T.gras),
+                Doux('${capitaliser(d.depart.quartier)}, ${d.depart.ville}'),
+              ],
+            ),
+            bas: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(capitaliser(d.arrivee.quartier), style: T.gras),
+                Doux('${d.arrivee.ville} · ${pluriel(d.places, 'place')}'),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Doux(
+            'Visible par tous les conducteurs inscrits. Ceux qui passent par là vers ${heureCourte(d.quand)} '
+            '(à ${inter ? '1 h' : '30 min'} près) sont alertés.',
+            taille: 14,
+          ),
+          const SizedBox(height: 12),
+          Btn(
+            'Simuler la réponse d’un conducteur',
+            hauteur: 50,
+            taille: 15,
+            onPressed: () {
+              Reservation? r;
+              if (essayer(context, () => r = s.simulerPriseEnCharge(d))) {
+                final c = r!.trajet.conducteur;
+                message(
+                  context,
+                  '${c.court} a accepté : il passe vous prendre ${jourRelatif(r!.trajet.heureDepart, s.maintenant).toLowerCase()} à ${heure(r!.trajet.heureDepart)}.',
+                );
+              }
+            },
+          ),
+          Lien('Retirer ma demande', couleur: C.sos, souligne: false, onTap: () => s.retirerDemande(d)),
+        ],
+      ),
     );
   }
 }

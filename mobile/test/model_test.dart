@@ -87,6 +87,18 @@ void main() {
       expect(s.prenom, 'Hermès');
       expect(s.solde, 7500);
     });
+
+    test('à l’entrée, on choisit passager ou conducteur', () {
+      final s = etat();
+      expect(s.verifierCode(s.envoyerCode('70000000')), isTrue);
+      expect(s.espaceAChoisir, isTrue);
+      s.choisirEspace(Mode.conducteur);
+      expect(s.espaceAChoisir, isFalse);
+      expect(s.mode, Mode.conducteur, reason: 'pas besoin d’être passager');
+      expect(s.estConducteur, isFalse, reason: 'il finit son inscription dans son espace');
+      s.basculerMode(Mode.passager);
+      expect(s.mode, Mode.passager);
+    });
   });
 
   group('trajets entre deux lieux', () {
@@ -130,6 +142,41 @@ void main() {
       expect(s.rechercher(depart: lCissin, arrivee: lKoudS7), hasLength(2));
     });
 
+    test('recherche à la date et à l’heure choisies', () {
+      final s = etat();
+      List<String> ids(DateTime quand) =>
+          s.rechercher(depart: lOuagaGare, arrivee: lKoudCentre, quand: quand).map((t) => t.id).toList();
+      // Demain : Issouf part à 7 h, Boukary à 16 h (Aminata : entre femmes).
+      expect(ids(DateTime(2026, 11, 25, 7)), ['t1', 't3']);
+      expect(ids(DateTime(2026, 11, 25, 6, 30)), ['t1', 't3'], reason: 'le conducteur part un peu après');
+      expect(ids(DateTime(2026, 11, 25, 15)), ['t3'], reason: 'Issouf est déjà parti');
+      expect(ids(DateTime(2026, 11, 26, 7)), isEmpty, reason: 'aucun trajet ce jour-là');
+      // Montée en chemin : le conducteur passe à mi-route 45 min après son départ.
+      expect(
+        heurePassage(DateTime(2026, 11, 25, 7), const Duration(minutes: 90), (monte: 0, descend: 0, fraction: .5)),
+        DateTime(2026, 11, 25, 7, 45),
+      );
+    });
+
+    test('le passager publie sa demande à son heure, un conducteur vient le prendre', () {
+      final s = etat();
+      final q = DateTime(2026, 11, 26, 8, 30);
+      expect(
+        () => s.publierDemande(depart: lPatteOie, arrivee: lKoudS7, quand: maintenant.subtract(const Duration(hours: 1))),
+        throwsA(isA<ErreurMetier>()),
+      );
+      final d = s.publierDemande(depart: lPatteOie, arrivee: lKoudS7, quand: q);
+      final r = s.simulerPriseEnCharge(d);
+      expect(r.statut, StatutResa.confirmee);
+      expect(r.trajet.heureDepart, q);
+      expect(r.trajet.depart, lPatteOie);
+      expect(r.montee, lPatteOie);
+      expect(r.descente, lKoudS7);
+      expect(s.demandesTrajet.contains(d), isFalse);
+      expect(s.notifications.first.titre, 'Course acceptée');
+      expect(s.aVenir, contains(r));
+    });
+
     test('croisement : montée sur la route, dépose près de l’adresse, dans le bon sens', () {
       final c = correspondance(lOuagaGare, lKoudCentre, lCissin, lKoudS7);
       expect(c, isNotNull);
@@ -138,6 +185,11 @@ void main() {
       expect(correspondance(lOuagaGare, lKoudCentre, lKoudCentre, lOuagaGare), isNull, reason: 'mauvais sens');
       expect(correspondance(lDassasgho, lOuaga2000, lZogona, lPatteOie), isNotNull);
       expect(correspondance(lDassasgho, lOuaga2000, lTampouy, lZogona), isNull, reason: 'trop loin');
+      expect(
+        correspondance(lOuagaGare, lKoudCentre, lDassasgho, lUnivOuaga),
+        isNull,
+        reason: 'trajet en ville : 3 km au plus, même sur une route entre villes',
+      );
       expect(ecartTexte(0.1), 'sur la route');
       expect(ecartTexte(2.4), 'à 2,4 km');
     });
@@ -340,29 +392,90 @@ void main() {
       );
     });
 
-    test('demandes de passagers : le conducteur propose une place sur son trajet', () {
+    test('alerte : le conducteur passe chez un passager inscrit vers son heure', () {
       final s = conducteurActif();
-      // Fatou cherche Patte d'Oie → Koudougou Secteur 7, demain 7 h.
-      final fatou = s.demandesPourConducteur.firstWhere((e) => e.$1.passager.prenom == 'Fatou');
-      expect(fatou.$2, isNull, reason: 'aucun trajet publié');
+      // Fatou attend à Patte d'Oie demain à 7 h, pour Koudougou Secteur 7.
+      bool fatou(DemandeTrajet d) => d.passager.prenom == 'Fatou';
+      expect(s.coursesPossibles.where((c) => fatou(c.demande)), isEmpty, reason: 'aucun trajet publié');
+      expect(s.passagersSansCourse.any(fatou), isTrue, reason: 'tous les passagers inscrits sont visibles');
+
+      // Départ à 11 h : trop tard pour Fatou (1 h de tolérance entre villes).
+      s.publier(ligne: Ligne.entre(lOuagaGare, lKoudCentre), depart: DateTime(2026, 11, 25, 11), places: 3, prix: 2000);
+      expect(s.coursesPossibles.where((c) => fatou(c.demande)), isEmpty);
+
       final t = s.publier(
         ligne: Ligne.entre(lOuagaGare, lKoudCentre),
         depart: DateTime(2026, 11, 25, 7),
         places: 3,
         prix: 2000,
       );
-      final (d, trajet) = s.demandesPourConducteur.firstWhere((e) => e.$1.passager.prenom == 'Fatou');
-      expect(trajet, t);
-      s.proposerPlace(d, t);
+      final c = s.coursesPossibles.firstWhere((c) => fatou(c.demande));
+      expect(c.trajet, t);
+      expect(c.passage, DateTime(2026, 11, 25, 7));
+      expect(s.coursesPour(t), contains(c));
+      expect(s.passagersSansCourse.any(fatou), isFalse);
+
+      s.prendreCourse(c);
       final p = t.confirmes.firstWhere((p) => p.personne.prenom == 'Fatou');
       expect(p.montee, lPatteOie);
       expect(p.descente, lKoudS7);
-      expect(s.demandesTrajet.contains(d), isFalse);
+      expect(s.demandesTrajet.contains(c.demande), isFalse);
+      expect(() => s.prendreCourse(c), throwsA(isA<ErreurMetier>()), reason: 'déjà prise');
 
-      // Le passager connecté publie aussi sa propre demande.
+      // Le passager connecté publie sa propre demande : pas d'alerte pour lui-même.
       final mienne = s.publierDemande(depart: lTampouy, arrivee: lZogona, quand: maintenant);
       expect(mienne.moi, isTrue);
-      expect(s.demandesPourConducteur.any((e) => e.$1 == mienne), isFalse);
+      expect(s.coursesPossibles.any((c) => c.demande == mienne), isFalse);
+      expect(s.passagersSansCourse.contains(mienne), isFalse);
+    });
+
+    test('le conducteur ignore une course : le passager reste visible', () {
+      final s = conducteurActif();
+      s.publier(ligne: Ligne.entre(lOuagaGare, lKoudCentre), depart: DateTime(2026, 11, 25, 7), places: 3, prix: 2000);
+      final c = s.coursesPossibles.firstWhere((c) => c.demande.passager.prenom == 'Fatou');
+      s.ignorerCourse(c);
+      expect(s.coursesPossibles.any((x) => x.demande == c.demande), isFalse);
+      expect(s.passagersSansCourse, contains(c.demande));
+    });
+
+    test('premier trajet publié : un passager fictif attend sur la route', () {
+      final s = conducteurActif();
+      final t = s.publier(
+        ligne: ligneParId('dassasgho-ouaga2000'),
+        depart: maintenant.add(const Duration(days: 1)),
+        places: 3,
+        prix: 400,
+      );
+      final exemple = s.coursesPour(t).where((c) => c.demande.exemple).toList();
+      expect(exemple, hasLength(1));
+      expect(exemple.single.croisement.monte, greaterThan(0.3));
+      expect(exemple.single.ecart.inMinutes.abs(), lessThan(5));
+    });
+
+    test('en route : un passager pris en chemin monte à bord', () {
+      final s = conducteurActif();
+      final t = s.publier(ligne: Ligne.entre(lOuagaGare, lKoudCentre), depart: DateTime(2026, 11, 25, 7), places: 3, prix: 2000);
+      final c = s.coursesPour(t).firstWhere((c) => c.demande.passager.prenom == 'Fatou');
+      for (final p in t.confirmes) {
+        s.validerCode(p, p.code);
+      }
+      s.demarrerTrajet(t);
+      s.prendreCourse(c);
+      final fatou = t.confirmes.firstWhere((p) => p.personne.prenom == 'Fatou');
+      expect(fatou.aBord, isFalse);
+      s.monterEnChemin(t, fatou);
+      expect(fatou.aBord, isTrue);
+    });
+
+    test('sans compte actif, le conducteur voit les passagers mais ne prend pas de course', () {
+      final s = etat();
+      s.choisirEspace(Mode.conducteur);
+      expect(s.mode, Mode.conducteur);
+      expect(s.passagersSansCourse, isNotEmpty);
+      expect(
+        () => s.publier(ligne: ligneParId('ouaga-koudougou'), depart: maintenant.add(const Duration(days: 2)), places: 3, prix: 2000),
+        throwsA(isA<ErreurMetier>()),
+      );
     });
 
     test('publier refuse un prix au-dessus du plafond', () {
