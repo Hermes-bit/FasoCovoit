@@ -676,9 +676,11 @@ class _CartePrix extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Doux(
-            ligne.interVilles
-                ? 'Le car coûte ${connue ? 'environ' : 'à peu près (estimation)'} ${fcfa(ligne.car)} sur ce trajet. Plancher : ${fcfa(tarif.plancher)}.'
-                : 'En ville, le prix reste sous le coût d’un VTC. Plancher : ${fcfa(tarif.plancher)}.',
+            !ligne.interVilles
+                ? 'En ville, le prix reste sous le coût d’un VTC (environ ${fcfa(ligne.km * 200)}). Plancher : ${fcfa(tarif.plancher)}.'
+                : connue && ligne.car > 0
+                ? 'Le car coûte environ ${fcfa(ligne.car)} sur cette ligne. Plancher : ${fcfa(tarif.plancher)}.'
+                : 'Pas de tarif de car connu sur ce trajet : prix calculé sur les frais d’essence. Plancher : ${fcfa(tarif.plancher)}.',
           ),
           const SizedBox(height: 8),
           Text(

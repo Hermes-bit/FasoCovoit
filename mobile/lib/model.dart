@@ -195,8 +195,8 @@ class Ligne {
       duree: connue?.duree ?? Duration(minutes: (minutes / 5).round() * 5),
       rdv: a.rdv ?? 'À préciser avec les passagers',
       interVilles: inter,
-      // Prix du car : connu sur les lignes fréquentes, sinon environ 20 F/km.
-      car: !inter ? 0 : (connue?.car ?? math.max(500, (km * 20 / 100).round() * 100)),
+      // Prix du car : connu sur les lignes relevées ; sinon 0 et la règle R39 s'applique.
+      car: !inter ? 0 : (connue?.car ?? 0),
       carVip: connue?.carVip ?? 0,
     );
   }
@@ -268,6 +268,11 @@ Tarif calculerTarif(
     final p = r(conseille * 1.3);
     plafond = p < 700 ? 700 : p;
     plancher = 200;
+  } else if (ligne.car <= 0) {
+    // R39 : pas de tarif de car connu → même calcul qu'en ville, sans minimum.
+    conseille = r(frais / 4);
+    plafond = r(conseille * 1.3);
+    plancher = r(conseille * 0.5);
   } else {
     conseille = r(ligne.car * 0.9);
     plafond = ligne.carVip > 0 ? ligne.carVip : r(ligne.car * 1.25);
@@ -723,8 +728,12 @@ class AppState extends ChangeNotifier {
 
   /// Compte de démonstration déjà existant (historique, portefeuille…).
   static const numeroDemo = '70000000';
-  static const dureeCode = Duration(minutes: 5);
+  static const dureeCode = Duration(minutes: 10); // T1
   static const essaisMax = 5;
+  static const attenteApresEchecs = Duration(minutes: 15); // T2
+
+  /// Numéros bloqués après 5 codes faux, jusqu'à l'heure indiquée.
+  final Map<String, DateTime> _bloqueJusqua = {};
 
   /// Numéros qui ont un compte. Démo : en mémoire, pour cette session.
   final Set<String> _comptes = {numeroDemo};
@@ -748,6 +757,10 @@ class AppState extends ChangeNotifier {
   String envoyerCode(String tel) {
     final c = chiffres(tel);
     if (c.length != 8) throw ErreurMetier('Saisissez les 8 chiffres de votre numéro.');
+    final bloque = _bloqueJusqua[c];
+    if (bloque != null && maintenant.isBefore(bloque)) {
+      throw ErreurMetier("Trop d'essais : demandez un nouveau code à partir de ${heure(bloque)}.");
+    }
     _telSms = c;
     _codeSms = (100000 + _alea.nextInt(900000)).toString();
     _expireSms = maintenant.add(dureeCode);
@@ -771,11 +784,13 @@ class AppState extends ChangeNotifier {
     if (code.trim() != _codeSms) {
       _essaisSms++;
       final reste = essaisMax - _essaisSms;
-      throw ErreurMetier(
-        reste > 0
-            ? 'Code incorrect. Encore ${pluriel(reste, 'essai')}.'
-            : "Trop d'essais : demandez un nouveau code.",
-      );
+      if (reste <= 0) {
+        final fin = maintenant.add(attenteApresEchecs);
+        _bloqueJusqua[tel] = fin;
+        _codeSms = null;
+        throw ErreurMetier("Trop d'essais : demandez un nouveau code à partir de ${heure(fin)}.");
+      }
+      throw ErreurMetier('Code incorrect. Encore ${pluriel(reste, 'essai')}.');
     }
     _codeSms = null;
     _telSms = null;
@@ -1034,8 +1049,9 @@ class AppState extends ChangeNotifier {
     required Paiement paiement,
     bool utiliserBonus = true,
   }) {
+    if (trajet.placesLibres <= 0) throw ErreurMetier('Trajet complet.'); // T5
     if (places < 1 || places > trajet.placesLibres) {
-      throw ErreurMetier("Il n'y a plus assez de places sur ce trajet.");
+      throw ErreurMetier("Il ne reste que ${pluriel(trajet.placesLibres, 'place')} sur ce trajet.");
     }
     if (reservations.any((r) => r.trajet == trajet && r.aVenir)) {
       throw ErreurMetier('Vous avez déjà une réservation sur ce trajet.');
@@ -1185,6 +1201,7 @@ class AppState extends ChangeNotifier {
   String deposer(int montant, Paiement operateur) {
     if (!operateur.mobile) throw ErreurMetier('Choisissez Orange Money ou Moov Money.');
     if (montant < 500) throw ErreurMetier('Dépôt minimum : 500 F.');
+    if (montant > 50000) throw ErreurMetier('Dépôt maximum : 50 000 F par dépôt.'); // R43
     if (solde + montant > soldeMax) {
       throw ErreurMetier('Solde maximum : ${fcfa(soldeMax)}.');
     }

@@ -456,7 +456,7 @@ class _SmsSimule extends StatelessWidget {
                         text: '${code.substring(0, 3)} ${code.substring(3)}',
                         style: const TextStyle(fontWeight: FontWeight.w800, color: C.etoile, letterSpacing: 1),
                       ),
-                      const TextSpan(text: '. Il expire dans 5 minutes. Ne le donnez à personne.'),
+                      const TextSpan(text: '. Il expire dans 10 minutes. Ne le donnez à personne.'),
                     ],
                   ),
                 ),

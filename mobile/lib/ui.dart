@@ -629,8 +629,8 @@ class IconeBtn extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: SizedBox(
-          width: 44,
-          height: 44,
+          width: 48,
+          height: 48,
           child: Icon(icon, size: taille, color: onTap == null && bord ? C.trait : couleur),
         ),
       ),
@@ -939,7 +939,7 @@ class Onglets extends StatelessWidget {
                 onTap: () => onChanged(i),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 160),
-                  height: 46,
+                  height: 48,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: i == index ? C.surface : Colors.transparent,

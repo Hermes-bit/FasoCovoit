@@ -355,18 +355,21 @@ class _ResultatsEcranState extends State<ResultatsEcran> {
             ], 8),
           ),
         ),
-        if (widget.interVilles)
+        if (!widget.interVilles || ligne.car > 0)
           Container(
             margin: const EdgeInsets.fromLTRB(20, 12, 20, 0),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(color: C.etoileC, borderRadius: BorderRadius.circular(14)),
             child: Row(
               children: [
-                const Icon(Icons.confirmation_number_outlined, size: 18),
+                Icon(widget.interVilles ? Icons.confirmation_number_outlined : Icons.local_taxi_outlined, size: 18),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'En car : environ ${fcfa(ligne.car)}. Ici, prix plafonné à ${fcfa(tarif.plafond)}, départ près de chez vous.',
+                    widget.interVilles
+                        ? 'En car : environ ${fcfa(ligne.car)}. Ici, prix plafonné à ${fcfa(tarif.plafond)}, départ près de chez vous.'
+                        // R38 : comparaison avec un VTC (référence 200 F par km).
+                        : 'En VTC : environ ${fcfa(ligne.km * 200)}. Ici, environ ${fcfa(tarif.conseille)} : vous partagez la voiture.',
                     style: T.petit,
                   ),
                 ),

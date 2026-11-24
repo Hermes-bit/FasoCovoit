@@ -45,21 +45,28 @@ void main() {
       expect(s.dernierCodeSms, isNull);
     });
 
-    test('après 5 essais faux, même le bon code est refusé', () {
-      final s = etat();
+    test('T2 : après 5 codes faux, attendre 15 min avant un nouveau code', () {
+      var heureCourante = maintenant;
+      final s = AppState(horloge: () => heureCourante);
       final code = s.envoyerCode('70000000');
       for (var i = 0; i < AppState.essaisMax; i++) {
         expect(() => s.verifierCode('000000'), throwsA(isA<ErreurMetier>()));
       }
       expect(() => s.verifierCode(code), throwsA(isA<ErreurMetier>()));
+      expect(() => s.envoyerCode('70000000'), throwsA(isA<ErreurMetier>()));
+      heureCourante = maintenant.add(const Duration(minutes: 16));
       expect(s.verifierCode(s.envoyerCode('70000000')), isTrue);
     });
 
-    test('un code expire après 5 minutes', () {
+    test('T1 : un code reste valable 10 minutes, puis expire', () {
       var heureCourante = maintenant;
       final s = AppState(horloge: () => heureCourante);
-      final code = s.envoyerCode('70000000');
-      heureCourante = maintenant.add(const Duration(minutes: 6));
+      var code = s.envoyerCode('70000000');
+      heureCourante = maintenant.add(const Duration(minutes: 9));
+      expect(s.verifierCode(code), isTrue);
+      s.deconnecter();
+      code = s.envoyerCode('70000000');
+      heureCourante = heureCourante.add(const Duration(minutes: 11));
       expect(() => s.verifierCode(code), throwsA(isA<ErreurMetier>()));
     });
 
@@ -92,13 +99,15 @@ void main() {
       expect(Ligne.entre(lCissin, const Lieu('Koudougou', 'Chez Tanti')).km, 98);
     });
 
-    test('trajet inconnu : distance et prix du car estimés', () {
+    test('R39 : ligne sans tarif de car connu, prix calculé sur les frais', () {
       final l = Ligne.entre(lKoudCentre, lBoboCentre);
       expect(l.km, inInclusiveRange(250, 320));
-      expect(l.car, greaterThan(4000));
+      expect(l.car, 0);
       final t = calculerTarif(l);
-      expect(t.plafond, lessThanOrEqualTo(t.limiteFrais));
-      expect(t.conseille, lessThanOrEqualTo(t.plafond));
+      int r(double x) => (x / 100).round() * 100;
+      expect(t.conseille, r(t.fraisTrajet / 4));
+      expect(t.plafond, r(t.conseille * 1.3));
+      expect(t.plancher, r(t.conseille * 0.5));
     });
 
     test('en ville : Dassasgho → Ouaga 2000 fait environ 9 km', () {
@@ -238,11 +247,24 @@ void main() {
       expect(s.bonus, 500);
     });
 
-    test('dépôt plafonné à 100 000 F et retrait limité à l’argent déposé', () {
+    test('T5 : plus de place, « Trajet complet »', () {
+      final s = etat();
+      final t = s.trajets.firstWhere((t) => t.id == 't1');
+      t.placesPrises = t.places;
+      expect(
+        () => s.reserver(t, places: 1, paiement: Paiement.especes),
+        throwsA(isA<ErreurMetier>().having((e) => e.message, 'message', 'Trajet complet.')),
+      );
+    });
+
+    test('R43 : dépôt de 500 à 50 000 F, solde plafonné à 100 000 F', () {
       final s = etat();
       s.deposer(5000, Paiement.orange);
       expect(s.depose, 12000);
-      expect(() => s.deposer(100000, Paiement.moov), throwsA(isA<ErreurMetier>()));
+      expect(() => s.deposer(60000, Paiement.moov), throwsA(isA<ErreurMetier>()));
+      s.deposer(50000, Paiement.moov);
+      expect(() => s.deposer(40000, Paiement.moov), throwsA(isA<ErreurMetier>()));
+      s.depose = 12000;
       expect(() => s.retirer(500, '1234'), throwsA(isA<ErreurMetier>()));
       expect(() => s.retirer(20000, '1234'), throwsA(isA<ErreurMetier>()));
       expect(() => s.retirer(2000, '12'), throwsA(isA<ErreurMetier>()));
