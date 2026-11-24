@@ -77,6 +77,68 @@ class ChoisirLieuEcran extends StatefulWidget {
 class _ChoisirLieuEcranState extends State<ChoisirLieuEcran> {
   final _recherche = TextEditingController();
 
+  @override
+  void initState() {
+    super.initState();
+    _recherche.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _recherche.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Ecran(
+    children: [
+      Barre(titre: widget.titre),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+        child: Champ(
+          controller: _recherche,
+          autofocus: true,
+          actif: true,
+          hint: 'Adresse, quartier ou lieu connu',
+          label: 'Rechercher un lieu',
+        ),
+      ),
+      Expanded(
+        child: ResultatsLieux(
+          requete: _recherche.text,
+          actuel: widget.actuel,
+          exclu: widget.exclu,
+          onChoisi: (l) => Navigator.pop(context, l),
+        ),
+      ),
+    ],
+  );
+}
+
+/// Résultats d'une recherche de lieu : adresses Google Maps (sur le Web,
+/// avec la clé), lieux connus de l'application, ou lieu libre dans une ville.
+class ResultatsLieux extends StatefulWidget {
+  const ResultatsLieux({
+    super.key,
+    required this.requete,
+    required this.onChoisi,
+    this.actuel,
+    this.exclu,
+    this.entete = const [],
+  });
+  final String requete;
+  final ValueChanged<Lieu> onChoisi;
+  final Lieu? actuel;
+  final Lieu? exclu;
+
+  /// Contenu affiché avant les résultats (historique, favoris…).
+  final List<Widget> entete;
+
+  @override
+  State<ResultatsLieux> createState() => _ResultatsLieuxState();
+}
+
+class _ResultatsLieuxState extends State<ResultatsLieux> {
   /// Adresses trouvées dans la base de Google Maps (null : pas de recherche
   /// Google, la liste de l'application suffit).
   List<SuggestionAdresse>? _google;
@@ -86,23 +148,21 @@ class _ChoisirLieuEcranState extends State<ChoisirLieuEcran> {
   int _demande = 0;
 
   @override
-  void initState() {
-    super.initState();
-    _recherche.addListener(_changer);
+  void didUpdateWidget(ResultatsLieux ancien) {
+    super.didUpdateWidget(ancien);
+    if (ancien.requete != widget.requete) _chercher();
   }
 
   @override
   void dispose() {
     _attente?.cancel();
-    _recherche.dispose();
     super.dispose();
   }
 
-  void _changer() {
-    setState(() {});
+  void _chercher() {
     if (!googleMapsDisponible) return;
     _attente?.cancel();
-    final texte = _recherche.text.trim();
+    final texte = widget.requete.trim();
     if (texte.length < 3) {
       setState(() => _google = null);
       return;
@@ -132,119 +192,92 @@ class _ChoisirLieuEcranState extends State<ChoisirLieuEcran> {
       message(context, 'C’est déjà le lieu choisi de l’autre côté.');
       return;
     }
-    Navigator.pop(context, lieu);
+    widget.onChoisi(lieu);
   }
 
   @override
   Widget build(BuildContext context) {
-    final q = normaliser(_recherche.text);
+    final q = normaliser(widget.requete);
     final trouves = lieux
         .where((l) => l != widget.exclu)
         .where((l) => q.isEmpty || normaliser('${l.quartier} ${l.ville} ${l.rdv ?? ''}').contains(q))
         .toList();
-    final saisie = _recherche.text.trim();
+    final saisie = widget.requete.trim();
     final exact = trouves.any((l) => normaliser(l.quartier) == q);
-    return Ecran(
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
       children: [
-        Barre(titre: widget.titre),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-          child: Champ(
-            controller: _recherche,
-            autofocus: true,
-            actif: true,
-            hint: 'Adresse, quartier ou lieu connu',
-            label: 'Rechercher un lieu',
-          ),
-        ),
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+        ...widget.entete,
+        if (_google != null || _chargement) ...[
+          Row(
             children: [
-              if (_google != null || _chargement) ...[
-                Row(
-                  children: [
-                    const Expanded(child: Doux('Adresses Google Maps', taille: 14, gras: true)),
-                    if (_chargement)
-                      const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                if (_google != null && _google!.isEmpty)
-                  const Doux('Aucune adresse Google pour cette recherche.')
-                else if (_google != null)
-                  ListeCarte(
-                    children: [
-                      for (final a in _google!)
-                        LigneListe(
-                          onTap: () => _choisirGoogle(a),
-                          children: [
-                            const Icon(Icons.place_outlined, size: 22, color: C.laterite),
-                            Bloc(a.principal, a.secondaire.isEmpty ? null : a.secondaire),
-                          ],
-                        ),
-                    ],
-                  ),
-                const SizedBox(height: 14),
-              ],
-              if (_googleIndisponible && saisie.length >= 3) ...[
-                const Doux('Recherche Google indisponible pour le moment : choisissez dans la liste.'),
-                const SizedBox(height: 14),
-              ],
-              for (final ville in centresVilles.keys)
-                if (trouves.any((l) => l.ville == ville)) ...[
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Doux(ville, taille: 14, gras: true),
-                  ),
-                  ListeCarte(
-                    children: [
-                      for (final l in trouves.where((l) => l.ville == ville))
-                        LigneListe(
-                          onTap: () => Navigator.pop(context, l),
-                          children: [
-                            Icon(
-                              Icons.location_on_outlined,
-                              size: 22,
-                              color: l == widget.actuel ? C.vert : C.laterite,
-                            ),
-                            Bloc(capitaliser(l.quartier), l.rdv),
-                            if (l == widget.actuel) const Icon(Icons.check_rounded, color: C.vert),
-                          ],
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                ],
-              if (saisie.length >= 2 && !exact) ...[
-                Doux(
-                  trouves.isEmpty ? 'Lieu absent de la liste : choisissez sa ville' : 'Autre lieu : choisissez sa ville',
-                  taille: 14,
-                  gras: true,
-                ),
-                const SizedBox(height: 8),
-                ListeCarte(
-                  children: [
-                    for (final ville in centresVilles.keys)
-                      LigneListe(
-                        onTap: () => Navigator.pop(context, Lieu(ville, saisie)),
-                        children: [
-                          const Icon(Icons.add_location_alt_outlined, size: 22),
-                          Bloc('« $saisie »', ville),
-                        ],
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Doux(
-                  googleMapsDisponible
-                      ? 'Choisissez plutôt une adresse Google Maps : sa position exacte sert au calcul.'
-                      : 'Pour un lieu hors liste, la distance est estimée depuis le centre de la ville.',
-                ),
-              ],
+              const Expanded(child: Doux('Adresses Google Maps', taille: 14, gras: true)),
+              if (_chargement) const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
             ],
           ),
-        ),
+          const SizedBox(height: 8),
+          if (_google != null && _google!.isEmpty)
+            const Doux('Aucune adresse Google pour cette recherche.')
+          else if (_google != null)
+            ListeCarte(
+              children: [
+                for (final a in _google!)
+                  LigneListe(
+                    onTap: () => _choisirGoogle(a),
+                    children: [
+                      const Icon(Icons.place_outlined, size: 22, color: C.laterite),
+                      Bloc(a.principal, a.secondaire.isEmpty ? null : a.secondaire),
+                    ],
+                  ),
+              ],
+            ),
+          const SizedBox(height: 14),
+        ],
+        if (_googleIndisponible && saisie.length >= 3) ...[
+          const Doux('Recherche Google indisponible pour le moment : choisissez dans la liste.'),
+          const SizedBox(height: 14),
+        ],
+        for (final ville in centresVilles.keys)
+          if (trouves.any((l) => l.ville == ville)) ...[
+            Padding(padding: const EdgeInsets.only(bottom: 8), child: Doux(ville, taille: 14, gras: true)),
+            ListeCarte(
+              children: [
+                for (final l in trouves.where((l) => l.ville == ville))
+                  LigneListe(
+                    onTap: () => widget.onChoisi(l),
+                    children: [
+                      Icon(Icons.location_on_outlined, size: 22, color: l == widget.actuel ? C.vert : C.laterite),
+                      Bloc(capitaliser(l.quartier), l.rdv),
+                      if (l == widget.actuel) const Icon(Icons.check_rounded, color: C.vert),
+                    ],
+                  ),
+              ],
+            ),
+            const SizedBox(height: 14),
+          ],
+        if (saisie.length >= 2 && !exact) ...[
+          Doux(
+            trouves.isEmpty ? 'Lieu absent de la liste : choisissez sa ville' : 'Autre lieu : choisissez sa ville',
+            taille: 14,
+            gras: true,
+          ),
+          const SizedBox(height: 8),
+          ListeCarte(
+            children: [
+              for (final ville in centresVilles.keys)
+                LigneListe(
+                  onTap: () => widget.onChoisi(Lieu(ville, saisie)),
+                  children: [const Icon(Icons.add_location_alt_outlined, size: 22), Bloc('« $saisie »', ville)],
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Doux(
+            googleMapsDisponible
+                ? 'Choisissez plutôt une adresse Google Maps : sa position exacte sert au calcul.'
+                : 'Pour un lieu hors liste, la distance est estimée depuis le centre de la ville.',
+          ),
+        ],
       ],
     );
   }

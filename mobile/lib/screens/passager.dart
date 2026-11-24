@@ -12,8 +12,8 @@ import '../photo.dart';
 import '../theme.dart';
 import '../ui.dart';
 import 'colis.dart';
+import 'demande.dart';
 import 'jour_j.dart';
-import 'lieux.dart';
 import 'messages_profil.dart';
 import 'portefeuille.dart';
 
@@ -77,10 +77,7 @@ class BasculeMode extends StatelessWidget {
     );
     return Container(
       padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: conducteur ? C.encre2 : C.lateriteF,
-        borderRadius: BorderRadius.circular(999),
-      ),
+      decoration: BoxDecoration(color: conducteur ? C.encre2 : C.lateriteF, borderRadius: BorderRadius.circular(999)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -95,794 +92,161 @@ class BasculeMode extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// 06 · Accueil et recherche (B3, B10)
+// 06 · Accueil : une seule question, « Où allez-vous ? »
 // ---------------------------------------------------------------------------
 
-class AccueilOnglet extends StatefulWidget {
+class AccueilOnglet extends StatelessWidget {
   const AccueilOnglet({super.key});
-
-  @override
-  State<AccueilOnglet> createState() => _AccueilOngletState();
-}
-
-class _AccueilOngletState extends State<AccueilOnglet> {
-  Lieu _depart = lOuagaGare;
-  Lieu _arrivee = lKoudCentre;
-  int _places = 1;
-  bool _femmes = false;
-
-  /// Date et heure de départ choisies ; null : maintenant.
-  DateTime? _quand;
-
-  bool get _inter => _depart.ville != _arrivee.ville;
-
-  @override
-  void initState() {
-    super.initState();
-    _quand = _demainMatin(AppScope.read(context).maintenant);
-  }
-
-  static DateTime _demainMatin(DateTime n) => DateTime(n.year, n.month, n.day + 1, 7);
-
-  Future<void> _choisirQuand() async {
-    final n = AppScope.read(context).maintenant;
-    final base = _quand ?? n;
-    final d = await showDatePicker(
-      context: context,
-      initialDate: jour(base),
-      firstDate: jour(n),
-      lastDate: jour(n).add(const Duration(days: 60)),
-      helpText: 'Date du départ',
-    );
-    if (d == null || !mounted) return;
-    final h = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.fromDateTime(base),
-      helpText: 'Heure du départ',
-    );
-    if (h == null || !mounted) return;
-    final q = DateTime(d.year, d.month, d.day, h.hour, h.minute);
-    if (q.isBefore(n)) {
-      message(context, 'Cette heure est passée : choisissez une heure à venir.');
-      return;
-    }
-    setState(() => _quand = q);
-  }
-
-  Future<void> _choisir({required bool depart}) async {
-    final l = await choisirLieu(
-      context,
-      titre: depart ? "D'où partez-vous ?" : 'Où allez-vous ?',
-      actuel: depart ? _depart : _arrivee,
-      exclu: depart ? _arrivee : _depart,
-    );
-    if (l == null) return;
-    setState(() => depart ? _depart = l : _arrivee = l);
-  }
 
   @override
   Widget build(BuildContext context) {
     final s = AppScope.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    final haut = MediaQuery.paddingOf(context).top;
+    final demandes = s.demandesTrajet.where((d) => d.moi).toList()..sort((a, b) => a.quand.compareTo(b.quand));
+    final aVenir = s.aVenir;
+    final vide = demandes.isEmpty && aVenir.isEmpty;
+    return Stack(
       children: [
-        Piste(
-          paddingBas: 30,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Ne y windiga, ${s.prenom}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
-                      const Titre('Où allez-vous ?'),
-                      const SizedBox(height: 8),
-                      Pastille(
-                        fcfa(s.solde),
-                        icon: Icons.account_balance_wallet_outlined,
-                        fond: C.encre,
-                        texte: C.etoile,
-                        onTap: () => ouvrir(context, const PortefeuilleEcran()),
-                      ),
-                    ],
-                  ),
+        Positioned.fill(child: CustomPaint(painter: ContoursPainter())),
+        SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                padding: EdgeInsets.fromLTRB(20, 16 + haut, 20, 56),
+                decoration: const BoxDecoration(
+                  color: C.laterite,
+                  borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
                 ),
-                const SizedBox(width: 8),
-                const BasculeMode(conducteur: false),
-              ],
-            ),
-          ],
-        ),
-        Zone(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-          children: [
-            Onglets(
-              labels: const ['En ville', 'Entre villes'],
-              index: _inter ? 1 : 0,
-              onChanged: (i) => setState(() {
-                // Raccourcis : un trajet type pour chaque mode.
-                if (i == 1 && !_inter) {
-                  _depart = lOuagaGare;
-                  _arrivee = lKoudCentre;
-                  _quand ??= _demainMatin(s.maintenant);
-                } else if (i == 0 && _inter) {
-                  _depart = lDassasgho;
-                  _arrivee = lOuaga2000;
-                  _quand = null;
-                }
-              }),
-            ),
-            Carte(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  RouteRail(
-                    gap: 14,
-                    haut: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
-                        ChampLieu(
-                          label: 'Départ',
-                          valeur: _depart,
-                          indication: 'Choisir le départ',
-                          onTap: () => _choisir(depart: true),
-                        ),
-                        const SizedBox(height: 14),
-                        const Sep(),
-                      ],
-                    ),
-                    bas: ChampLieu(
-                      label: 'Arrivée',
-                      valeur: _arrivee,
-                      indication: 'Où allez-vous ?',
-                      onTap: () => _choisir(depart: false),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Sep(),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Semantics(
+                        Semantics(
                           button: true,
-                          label: 'Départ : ${texteQuand(_quand, s.maintenant)}. Choisir la date et l’heure',
-                          excludeSemantics: true,
-                          child: InkWell(
-                            onTap: _choisirQuand,
-                            borderRadius: BorderRadius.circular(12),
-                            child: ConstrainedBox(
-                              constraints: const BoxConstraints(minHeight: 48),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.calendar_today_outlined, size: 22),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Doux('Départ'),
-                                        Text(texteQuand(_quand, s.maintenant), style: T.gras),
-                                      ],
-                                    ),
-                                  ),
-                                ],
+                          label: 'Mon profil',
+                          child: Material(
+                            color: C.surface,
+                            shape: const StadiumBorder(),
+                            child: InkWell(
+                              customBorder: const StadiumBorder(),
+                              onTap: () => s.allerOnglet(3),
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(4, 4, 14, 4),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    PhotoRonde(photo: s.photo, initiales: s.moi.initiales, taille: 32),
+                                    const SizedBox(width: 8),
+                                    Text(s.prenom, style: T.gras),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Compteur(
-                        valeur: _places,
-                        grand: false,
-                        largeurTexte: 64,
-                        texte: pluriel(_places, 'place'),
-                        onMoins: _places > 1 ? () => setState(() => _places--) : null,
-                        onPlus: _places < 4 ? () => setState(() => _places++) : null,
-                      ),
-                    ],
-                  ),
-                  if (_quand != null)
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Lien('Partir maintenant', onTap: () => setState(() => _quand = null)),
-                    ),
-                ],
-              ),
-            ),
-            if (s.femme)
-              LigneCase(
-                value: _femmes,
-                onChanged: (v) => setState(() => _femmes = v),
-                child: const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Entre femmes', style: T.gras),
-                    Doux('Seulement des conductrices'),
-                  ],
-                ),
-              ),
-            Btn(
-              'Rechercher',
-              icon: Icons.search_rounded,
-              onPressed: () => ouvrir(
-                context,
-                ResultatsEcran(
-                  depart: _depart,
-                  arrivee: _arrivee,
-                  quand: _quand,
-                  places: _places,
-                  conductrices: _femmes,
-                ),
-              ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Doux('Votre trajet habituel', taille: 14, gras: true),
-                const SizedBox(height: 8),
-                Carte(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  onTap: () => ouvrir(context, const ResultatsEcran(depart: lDassasgho, arrivee: lOuaga2000, places: 1)),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.sync_rounded, size: 22),
-                      SizedBox(width: 12),
-                      Bloc('Dassasgho → Ouaga 2000', 'Lun. au ven., 7 h 15'),
-                      Icon(Icons.chevron_right_rounded),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            Carte(
-              pointillee: true,
-              bord: C.laterite,
-              epaisseur: 1.5,
-              onTap: () => ouvrir(context, const ColisEnvoyerEcran()),
-              child: const Row(
-                children: [
-                  Icon(Icons.inventory_2_outlined, color: C.laterite, size: 24),
-                  SizedBox(width: 12),
-                  Bloc('Envoyer un colis', 'Bientôt : documents et paquets, en ville et entre villes'),
-                  Icon(Icons.chevron_right_rounded),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// 07 · Résultats (B3)
-// ---------------------------------------------------------------------------
-
-/// « Maintenant » ou « Demain, mer. 25 nov. · 7 h 00 ».
-String texteQuand(DateTime? quand, DateTime maintenant) =>
-    quand == null ? 'Maintenant' : '${jourRelatifComplet(quand, maintenant)} · ${heure(quand)}';
-
-class ResultatsEcran extends StatefulWidget {
-  const ResultatsEcran({
-    super.key,
-    required this.depart,
-    required this.arrivee,
-    required this.places,
-    this.quand,
-    this.conductrices = false,
-  });
-  final Lieu depart;
-  final Lieu arrivee;
-  final int places;
-
-  /// Date et heure de départ choisies ; null : maintenant.
-  final DateTime? quand;
-  final bool conductrices;
-
-  bool get interVilles => depart.ville != arrivee.ville;
-
-  @override
-  State<ResultatsEcran> createState() => _ResultatsEcranState();
-}
-
-class _ResultatsEcranState extends State<ResultatsEcran> {
-  late bool _conductrices = widget.conductrices;
-  bool _matin = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final s = AppScope.of(context);
-    final d = widget.depart, a = widget.arrivee;
-    final q = widget.quand;
-    final tous = s.rechercher(depart: d, arrivee: a, quand: q, places: widget.places);
-    final liste = s.rechercher(
-      depart: d,
-      arrivee: a,
-      quand: q,
-      places: widget.places,
-      conductrices: _conductrices,
-      matin: _matin,
-    );
-    final ligne = Ligne.entre(d, a);
-    final tarif = calculerTarif(ligne);
-    final vers = q == null ? '' : ' vers ${heureCourte(q)}';
-    return Ecran(
-      children: [
-        Barre(
-          titre: widget.interVilles ? '${d.ville} → ${a.ville}' : '${capitaliser(d.quartier)} → ${capitaliser(a.quartier)}',
-          sousTitre: '${texteQuand(q, s.maintenant)} · ${pluriel(widget.places, 'place')}',
-        ),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-          child: Row(
-            children: espacer([
-              Puce(
-                'Tous · ${tous.length}',
-                on: !_conductrices && !_matin,
-                onTap: () => setState(() => _conductrices = _matin = false),
-              ),
-              if (s.femme)
-                Puce('Entre femmes', on: _conductrices, onTap: () => setState(() => _conductrices = !_conductrices)),
-              if (widget.interVilles)
-                Puce('Le matin', on: _matin, onTap: () => setState(() => _matin = !_matin)),
-            ], 8),
-          ),
-        ),
-        if (!widget.interVilles || ligne.car > 0)
-          Container(
-            margin: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(color: C.etoileC, borderRadius: BorderRadius.circular(14)),
-            child: Row(
-              children: [
-                Icon(widget.interVilles ? Icons.confirmation_number_outlined : Icons.local_taxi_outlined, size: 18),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    widget.interVilles
-                        ? 'En car : environ ${fcfa(ligne.car)}. Ici, prix plafonné à ${fcfa(tarif.plafond)}, départ près de chez vous.'
-                        // R38 : comparaison avec un VTC (référence 200 F par km).
-                        : 'En VTC : environ ${fcfa(ligne.km * 200)}. Ici, environ ${fcfa(tarif.conseille)} : vous partagez la voiture.',
-                    style: T.petit,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        Zone(
-          gap: 12,
-          children: [
-            if (liste.isEmpty)
-              Carte(
-                child: Text(
-                  tous.isEmpty
-                      ? (q == null
-                            ? 'Aucun conducteur ne propose encore ce trajet. Essayez un lieu proche, '
-                                  'ou les trajets de démonstration : Ouaga → Koudougou, Dassasgho → Ouaga 2000.'
-                            : 'Aucun conducteur ne passe par là ${jourRelatif(q, s.maintenant).toLowerCase()}$vers. '
-                                  'Publiez votre demande : les conducteurs qui y passent seront alertés.')
-                      : 'Aucun trajet ne correspond. Essayez sans filtre ou à un autre horaire.',
-                  style: T.petit,
-                ),
-              ),
-            for (var i = 0; i < liste.length; i++)
-              CarteTrajet(
-                trajet: liste[i],
-                selection: i == 0,
-                croisement: texteCroisement(
-                  s.correspondancePour(liste[i], d, a),
-                  passage: s.passagePour(liste[i], d, a),
-                  depart: liste[i].heureDepart,
-                ),
-                onTap: () => ouvrir(
-                  context,
-                  FicheEcran(trajet: liste[i], places: widget.places, montee: d, descente: a),
-                ),
-              ),
-            Carte(
-              pointillee: true,
-              bord: C.laterite,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(liste.isEmpty ? 'Publiez votre demande' : 'Aucune offre ne vous convient ?', style: T.gras),
-                  const SizedBox(height: 4),
-                  Doux(
-                    'Tous les conducteurs inscrits la voient. Ceux qui passent par ${capitaliser(d.quartier)} '
-                    'et ${capitaliser(a.quartier)}$vers sont alertés : celui qui accepte vient vous prendre à l’heure choisie.',
-                    taille: 14,
-                  ),
-                  const SizedBox(height: 10),
-                  BtnClair(
-                    'Publier ma demande',
-                    icon: Icons.campaign_outlined,
-                    onPressed: () {
-                      if (essayer(
-                        context,
-                        () => s.publierDemande(depart: d, arrivee: a, quand: q ?? s.maintenant, places: widget.places),
-                      )) {
-                        message(context, 'Demande publiée : retrouvez-la dans « Mes trajets ».');
-                      }
-                    },
-                  ),
-                ],
-              ),
-            ),
-            const Doux(
-              'Prix plafonnés : le conducteur partage ses frais de carburant, il ne fait pas de bénéfice.',
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-/// « Montée sur la route, vers 7 h 15 · dépose à 800 m de votre adresse ».
-/// L'heure de passage n'est donnée que si le passager monte en chemin.
-String? texteCroisement(Croisement? c, {DateTime? passage, DateTime? depart}) {
-  if (c == null) return null;
-  final vers = passage != null && depart != null && passage.difference(depart).inMinutes >= 5
-      ? ', vers ${heure(passage)}'
-      : '';
-  return 'Montée ${ecartTexte(c.monte)}$vers · dépose ${ecartTexte(c.descend)} de votre adresse';
-}
-
-class CarteTrajet extends StatelessWidget {
-  const CarteTrajet({super.key, required this.trajet, required this.onTap, this.selection = false, this.croisement});
-  final Trajet trajet;
-  final VoidCallback onTap;
-  final bool selection;
-
-  /// Croisement avec l'adresse du passager (montée et dépose).
-  final String? croisement;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = trajet;
-    final c = t.conducteur;
-    Widget horaire(DateTime h, String lieu) => Text.rich(
-      TextSpan(
-        children: [
-          TextSpan(text: heure(h), style: T.gras),
-          TextSpan(text: ' ${capitaliser(lieu)}', style: const TextStyle(color: C.doux)),
-        ],
-      ),
-    );
-    final contenu = Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: RouteRail(
-                gap: 12,
-                voieMin: 18,
-                haut: horaire(t.heureDepart, t.depart.quartier),
-                bas: horaire(t.heureArrivee, t.arrivee.quartier),
-              ),
-            ),
-            Text.rich(
-              TextSpan(
-                children: [
-                  TextSpan(text: milliers(t.prix), style: T.titre(20)),
-                  const TextSpan(
-                    text: ' F',
-                    style: TextStyle(fontSize: 13, color: C.doux, fontWeight: FontWeight.w600),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        if (croisement != null) ...[
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              const Icon(Icons.near_me_outlined, size: 16, color: C.vertF),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  croisement!,
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: C.vertF),
-                ),
-              ),
-            ],
-          ),
-        ],
-        const SizedBox(height: 12),
-        const Sep(),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Ava(c.initiales, ton: c.ton),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Wrap(
-                    spacing: 8,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [Text(c.court, style: T.gras), Verifie(femme: c.femme)],
-                  ),
-                  const SizedBox(height: 4),
-                  c.nouveau
-                      ? Doux(c.femme ? 'Nouvelle conductrice' : 'Nouveau conducteur')
-                      : LigneNote(
-                          note: c.note,
-                          suite: ' · ${c.trajets} trajets${t.interVilles ? ' · ${c.voiture.split(' ').last} ${c.couleur}' : ''}',
-                        ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                if (t.entreFemmes) ...[
-                  const Pastille('Entre femmes', ton: TonPastille.femmes),
-                  const SizedBox(height: 4),
-                ],
-                Doux(pluriel(t.placesLibres, 'place'), gras: true),
-              ],
-            ),
-          ],
-        ),
-      ],
-    );
-    return Semantics(
-      button: true,
-      label: '${c.court}, départ ${heure(t.heureDepart)}, ${fcfa(t.prix)}',
-      child: selection ? Carte.sel(onTap: onTap, child: contenu) : Carte(onTap: onTap, child: contenu),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// 08 · Fiche du trajet (B4, B5)
-// ---------------------------------------------------------------------------
-
-class FicheEcran extends StatefulWidget {
-  const FicheEcran({super.key, required this.trajet, this.places = 1, this.montee, this.descente});
-  final Trajet trajet;
-  final int places;
-
-  /// Adresses du passager, croisées avec le trajet.
-  final Lieu? montee;
-  final Lieu? descente;
-
-  @override
-  State<FicheEcran> createState() => _FicheEcranState();
-}
-
-class _FicheEcranState extends State<FicheEcran> {
-  late int _places = widget.places.clamp(1, math.max(1, widget.trajet.placesLibres));
-
-  @override
-  Widget build(BuildContext context) {
-    final s = AppScope.of(context);
-    final t = widget.trajet;
-    final c = t.conducteur;
-    final max = math.min(t.placesLibres, 4);
-    return Ecran(
-      children: [
-        Barre(
-          titre: '${capitaliser(jourCourt(t.heureDepart))} · ${heure(t.heureDepart)}',
-          sousTitre: 'Environ ${duree(t.duree)} · ${t.km} km',
-          actions: [
-            IconeBtn(
-              icon: Icons.share_outlined,
-              label: 'Partager le trajet',
-              onTap: () {
-                Clipboard.setData(
-                  ClipboardData(
-                    text: 'FasoCovoit : ${t.titreLong}, ${jourCourt(t.heureDepart)} à ${heure(t.heureDepart)} avec ${c.court}, ${fcfa(t.prix)} la place.',
-                  ),
-                );
-                message(context, 'Description du trajet copiée.');
-              },
-            ),
-          ],
-        ),
-        Zone(
-          gap: 14,
-          children: [
-            Carte(
-              child: RouteRail(
-                haut: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('${heure(t.heureDepart)} · ${capitaliser(t.depart.quartier)}', style: T.gras),
-                    Doux('Rendez-vous : ${t.rdv.toLowerCase()}'),
-                  ],
-                ),
-                bas: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('${heure(t.heureArrivee)} · ${t.interVilles ? '${t.arrivee.ville}, ' : ''}${t.arrivee.quartier}', style: T.gras),
-                    const Doux('Dépose possible sur le trajet'),
-                  ],
-                ),
-              ),
-            ),
-            if (widget.montee != null && widget.descente != null)
-              Builder(
-                builder: (context) {
-                  final c = s.correspondancePour(t, widget.montee!, widget.descente!);
-                  return Carte(
-                    couleur: C.vertC,
-                    bord: const Color(0xFFA9D3B7),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Votre trajet', style: T.gras),
-                        const SizedBox(height: 6),
-                        Text('Vous montez : ${widget.montee!.complet}', style: T.petit),
-                        if (c != null)
-                          Doux(
-                            'Départ du conducteur ${ecartTexte(c.monte)} · il passe vers '
-                            '${heure(heurePassage(t.heureDepart, t.duree, c))}',
-                          ),
-                        const SizedBox(height: 6),
-                        Text('Vous descendez : ${widget.descente!.complet}', style: T.petit),
-                        if (c != null) Doux('Dépose ${ecartTexte(c.descend)} de votre adresse'),
+                        const Spacer(),
+                        const BasculeMode(conducteur: false),
                       ],
                     ),
-                  );
-                },
-              ),
-            if (googleMapsDisponible)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(18),
-                child: SizedBox(
-                  height: 200,
-                  child: CarteRoute(depart: t.depart, arrivee: t.arrivee, interactive: false, margeHaut: 28, margeBas: 28),
+                    const SizedBox(height: 22),
+                    Semantics(
+                      header: true,
+                      child: Text(
+                        'Ne y windiga, ${s.prenom} ! Envie de vous déplacer quelque part ?',
+                        style: T.titre(26, color: Colors.white).copyWith(height: 1.1),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Pastille(
+                      fcfa(s.solde),
+                      icon: Icons.account_balance_wallet_outlined,
+                      fond: C.encre,
+                      texte: C.etoile,
+                      onTap: () => ouvrir(context, const PortefeuilleEcran()),
+                    ),
+                  ],
                 ),
               ),
-            Carte(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      Ava(c.initiales, ton: c.ton),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Wrap(
-                              spacing: 8,
-                              crossAxisAlignment: WrapCrossAlignment.center,
+              // La barre de recherche chevauche le bas de l'en-tête.
+              Transform.translate(
+                offset: const Offset(0, -30),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Semantics(
+                    button: true,
+                    label: 'Où allez-vous ?',
+                    excludeSemantics: true,
+                    child: Material(
+                      color: Colors.transparent,
+                      child: Ink(
+                        decoration: ShapeDecoration(
+                          color: C.surface,
+                          shape: const StadiumBorder(side: BorderSide(color: C.trait, width: 1.5)),
+                          shadows: ombreDouce,
+                        ),
+                        child: InkWell(
+                          customBorder: const StadiumBorder(),
+                          onTap: () => ouvrir(context, const ItineraireEcran()),
+                          child: const SizedBox(
+                            height: 60,
+                            child: Row(
                               children: [
-                                Text(c.court, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
-                                Verifie(femme: c.femme),
+                                SizedBox(width: 20),
+                                Icon(Icons.place_rounded, color: C.laterite),
+                                SizedBox(width: 10),
+                                Text('Où allez-vous ?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
                               ],
                             ),
-                            c.nouveau
-                                ? Doux('${c.femme ? 'Nouvelle conductrice' : 'Nouveau conducteur'} · membre depuis ${c.depuis}')
-                                : LigneNote(
-                                    note: c.note,
-                                    suite: ' sur 5 · ${c.trajets} trajets · membre depuis ${c.depuis}',
-                                  ),
-                          ],
+                          ),
                         ),
                       ),
-                      IconeBtn(
-                        icon: Icons.chat_bubble_outline_rounded,
-                        label: 'Écrire à ${c.prenom}',
-                        bord: true,
-                        taille: 20,
-                        onTap: () {
-                          final conv = s.conversationPour(c);
-                          if (conv == null) {
-                            message(context, 'Les messages s’ouvrent après une réservation.');
-                          } else {
-                            ouvrir(context, ConversationEcran(conversation: conv));
-                          }
-                        },
-                      ),
-                    ],
+                    ),
                   ),
-                  const SizedBox(height: 12),
-                  const Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      Pastille('CNIB', ton: TonPastille.vert, icon: Icons.check_rounded),
-                      Pastille('Permis', ton: TonPastille.vert, icon: Icons.check_rounded),
-                      Pastille('Assurance à jour', ton: TonPastille.vert, icon: Icons.check_rounded),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  const Sep(),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      const Icon(Icons.directions_car_outlined, size: 24),
-                      const SizedBox(width: 12),
-                      Bloc(c.vehicule, 'Plaque ${c.plaque}${c.climatisee ? ' · climatisée' : ''}'),
-                    ],
-                  ),
-                ],
+                ),
               ),
-            ),
-            Carte(
-              child: Row(
-                children: [
-                  Bloc('Places', pluriel(t.placesLibres, 'disponible')),
-                  Compteur(
-                    valeur: _places,
-                    onMoins: _places > 1 ? () => setState(() => _places--) : null,
-                    onPlus: _places < max ? () => setState(() => _places++) : null,
-                  ),
-                ],
-              ),
-            ),
-            InkWell(
-              onTap: () => ouvrir(context, const ReglesAnnulationEcran()),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(Icons.description_outlined, size: 18, color: C.doux),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text.rich(
-                      TextSpan(
-                        style: const TextStyle(fontSize: 14, color: C.doux),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text('Mes covoit’', style: T.titre(22)),
+                    const SizedBox(height: 14),
+                    if (vide) ...[
+                      const SizedBox(height: 18),
+                      SizedBox(height: 120, child: CustomPaint(painter: IllustrationCartePainter())),
+                      const SizedBox(height: 16),
+                      const Text('Recherchez un nouveau covoit’', textAlign: TextAlign.center, style: T.gras),
+                      const SizedBox(height: 4),
+                      const Doux('Et suivez son avancée juste ici', taille: 15, align: TextAlign.center),
+                    ] else
+                      ...espacer([
+                        for (final d in demandes) CarteDemandeEnCours(d),
+                        for (final r in aVenir)
+                          _CarteAVenir(
+                            r,
+                            premier:
+                                r ==
+                                aVenir.firstWhere((x) => x.statut != StatutResa.enAttente, orElse: () => aVenir.first),
+                          ),
+                      ], 12),
+                    const SizedBox(height: 22),
+                    Carte(
+                      pointillee: true,
+                      bord: C.laterite,
+                      epaisseur: 1.5,
+                      onTap: () => ouvrir(context, const ColisEnvoyerEcran()),
+                      child: const Row(
                         children: [
-                          TextSpan(
-                            text: t.interVilles
-                                ? 'Annulation gratuite plus de 24 h avant. '
-                                : 'Annulation gratuite jusqu’à l’arrivée du conducteur. ',
-                          ),
-                          const TextSpan(
-                            text: 'Voir les règles',
-                            style: TextStyle(
-                              color: C.vertF,
-                              fontWeight: FontWeight.w700,
-                              decoration: TextDecoration.underline,
-                            ),
-                          ),
+                          Icon(Icons.inventory_2_outlined, color: C.laterite, size: 24),
+                          SizedBox(width: 12),
+                          Bloc('Envoyer un colis', 'Bientôt : documents et paquets, en ville et entre villes'),
+                          Icon(Icons.chevron_right_rounded),
                         ],
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        Pied(
-          child: Row(
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Titre(fcfa(_places * t.prix)),
-                  Doux('$_places × ${fcfa(t.prix)}'),
-                ],
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Btn(
-                  'Continuer',
-                  onPressed: t.placesLibres < 1
-                      ? null
-                      : () => ouvrir(
-                          context,
-                          PaiementEcran(trajet: t, places: _places, montee: widget.montee, descente: widget.descente),
-                        ),
+                  ],
                 ),
               ),
             ],
@@ -891,190 +255,6 @@ class _FicheEcranState extends State<FicheEcran> {
       ],
     );
   }
-}
-
-// ---------------------------------------------------------------------------
-// 09 · Paiement (C1, C2)
-// ---------------------------------------------------------------------------
-
-class PaiementEcran extends StatefulWidget {
-  const PaiementEcran({super.key, required this.trajet, required this.places, this.montee, this.descente});
-  final Trajet trajet;
-  final int places;
-  final Lieu? montee;
-  final Lieu? descente;
-
-  @override
-  State<PaiementEcran> createState() => _PaiementEcranState();
-}
-
-class _PaiementEcranState extends State<PaiementEcran> {
-  Paiement _mode = Paiement.portefeuille;
-  bool _bonus = true;
-  late final TextEditingController _numero;
-
-  @override
-  void initState() {
-    super.initState();
-    _numero = TextEditingController(text: AppScope.read(context).telephone);
-  }
-
-  @override
-  void dispose() {
-    _numero.dispose();
-    super.dispose();
-  }
-
-  String _note(AppState s, Paiement p) => switch (p) {
-    Paiement.portefeuille => 'Solde ${fcfa(s.solde)}${s.bonus > 0 ? ', dont ${fcfa(s.bonus)} de bonus' : ''}',
-    Paiement.orange || Paiement.moov => 'Payé maintenant, place garantie',
-    Paiement.especes => 'À donner au conducteur en montant',
-  };
-
-  Future<void> _payer(AppState s, int total) async {
-    if (_mode.mobile) {
-      final ok = await confirmer(
-        context,
-        titre: 'Confirmez sur votre téléphone',
-        texte: 'Une demande de paiement de ${fcfa(total)} arrive sur le ${_numero.text}. '
-            'Validez-la avec votre code secret ${_mode.label}. FasoCovoit ne vous demandera jamais ce code.\n\n'
-            'Prototype : le paiement est simulé.',
-        oui: "J'ai confirmé",
-        non: 'Annuler',
-      );
-      if (!ok || !mounted) return;
-    }
-    Reservation? resa;
-    final ok = essayer(context, () {
-      resa = s.reserver(
-        widget.trajet,
-        places: widget.places,
-        paiement: _mode,
-        utiliserBonus: _bonus,
-        montee: widget.montee,
-        descente: widget.descente,
-      );
-    });
-    if (ok && mounted) remplacer(context, AttenteEcran(reservation: resa!));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final s = AppScope.of(context);
-    final t = widget.trajet;
-    final total = widget.places * t.prix;
-    final bonusPris = _mode == Paiement.portefeuille && _bonus ? s.bonusUtilisable(total) : 0;
-    final manque = _mode == Paiement.portefeuille ? total - bonusPris - s.depose : 0;
-    final enLigne = _mode.enLigne;
-    final cta = _mode.mobile
-        ? 'Payer ${fcfa(total)}'
-        : (_mode == Paiement.portefeuille ? 'Payer avec mon portefeuille' : 'Envoyer la demande');
-    return Ecran(
-      children: [
-        Barre(
-          titre: 'Paiement',
-          sousTitre: '${t.titre} · ${jourCourt(t.heureDepart).split(' ').first} ${heure(t.heureDepart)}',
-        ),
-        Zone(
-          gap: 12,
-          children: [
-            const Etiq('Comment voulez-vous payer ?'),
-            for (final p in Paiement.values)
-              Choix(
-                on: _mode == p,
-                onTap: () => setState(() => _mode = p),
-                children: [LogoPaiement(p), Bloc(p.label, _note(s, p))],
-              ),
-            if (_mode == Paiement.portefeuille && s.bonus > 0)
-              Carte(
-                bord: C.etoile,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                onTap: () => setState(() => _bonus = !_bonus),
-                child: Row(
-                  children: [
-                    const Etoile(size: 24),
-                    const SizedBox(width: 12),
-                    Bloc(
-                      'Utiliser mon bonus',
-                      _bonus
-                          ? '${fcfa(bonusPris)} de bonus + ${fcfa(total - bonusPris)} du portefeuille'
-                          : '${fcfa(total)} du portefeuille',
-                    ),
-                    Case(value: _bonus, onChanged: (v) => setState(() => _bonus = v)),
-                  ],
-                ),
-              ),
-            if (manque > 0)
-              Carte(
-                couleur: C.sosC,
-                bord: C.sosBord,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Il manque ${fcfa(manque)} sur votre portefeuille.', style: T.gras),
-                    const SizedBox(height: 8),
-                    BtnP('Déposer de l’argent', onPressed: () => ouvrir(context, const DeposerEcran())),
-                  ],
-                ),
-              ),
-            if (_mode.mobile)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Etiq('Numéro ${_mode.label}'),
-                  const SizedBox(height: 8),
-                  Champ(controller: _numero, actif: true, clavier: TextInputType.phone, label: 'Numéro ${_mode.label}'),
-                ],
-              ),
-            Carte(
-              child: Column(
-                children: [
-                  _ligne('${pluriel(widget.places, 'place')} × ${fcfa(t.prix)}', Text(fcfa(total), style: T.gras)),
-                  const SizedBox(height: 8),
-                  _ligne(
-                    'Frais FasoCovoit',
-                    const Text('0 F pendant le pilote', style: TextStyle(fontWeight: FontWeight.w700, color: C.vertF)),
-                  ),
-                  if (bonusPris > 0) ...[
-                    const SizedBox(height: 8),
-                    _ligne('Dont bonus', Text('− ${fcfa(bonusPris)}', style: const TextStyle(fontWeight: FontWeight.w700, color: C.etoileF))),
-                  ],
-                  const SizedBox(height: 8),
-                  const Sep(),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Expanded(child: Text('Total', style: T.gras)),
-                      Text(fcfa(total), style: T.titre(20)),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            Wrap(
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                Doux(
-                  enLigne
-                      ? 'Si le conducteur refuse ou ne répond pas en 30 min, vous êtes remboursé automatiquement.'
-                      : 'Vous payez au conducteur au départ, après avoir donné votre code.',
-                ),
-                Lien("Règles d'annulation", taille: 13, onTap: () => ouvrir(context, const ReglesAnnulationEcran())),
-              ],
-            ),
-          ],
-        ),
-        Pied(child: Btn(cta, onPressed: manque > 0 ? null : () => _payer(s, total))),
-      ],
-    );
-  }
-
-  Widget _ligne(String label, Widget valeur) => Row(
-    children: [
-      Expanded(child: Text(label, style: const TextStyle(color: C.doux))),
-      valeur,
-    ],
-  );
 }
 
 // ---------------------------------------------------------------------------
@@ -1173,10 +353,13 @@ class _AttenteEcranState extends State<AttenteEcran> {
               ),
               BtnClair('Annuler la demande', onPressed: () => ouvrir(context, AnnulerEcran(reservation: r))),
             ] else
-              Btn('Voir mes trajets', onPressed: () {
-                s.allerOnglet(1);
-                retourAccueil(context);
-              }),
+              Btn(
+                'Voir mes trajets',
+                onPressed: () {
+                  s.allerOnglet(1);
+                  retourAccueil(context);
+                },
+              ),
           ],
         ),
       ],
@@ -1358,8 +541,7 @@ class _BilletEcranState extends State<BilletEcran> {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: espacer([
-                              for (final ch in r.code.split(''))
-                                Chiffre(ch, largeur: 44, hauteur: 52, taille: 28),
+                              for (final ch in r.code.split('')) Chiffre(ch, largeur: 44, hauteur: 52, taille: 28),
                             ], 8),
                           ),
                         ),
@@ -1386,7 +568,10 @@ class _BilletEcranState extends State<BilletEcran> {
                 ),
                 Expanded(
                   child: _Action(Icons.chat_bubble_outline_rounded, 'Message', () {
-                    final conv = s.ouvrirConversation(c, '${t.titre} · ${jourRelatif(t.heureDepart, s.maintenant).toLowerCase()} ${heureCourte(t.heureDepart)}');
+                    final conv = s.ouvrirConversation(
+                      c,
+                      '${t.titre} · ${jourRelatif(t.heureDepart, s.maintenant).toLowerCase()} ${heureCourte(t.heureDepart)}',
+                    );
                     ouvrir(context, ConversationEcran(conversation: conv));
                   }),
                 ),
@@ -1394,7 +579,8 @@ class _BilletEcranState extends State<BilletEcran> {
                   child: _Action(Icons.share_outlined, 'Partager', () {
                     Clipboard.setData(
                       ClipboardData(
-                        text: 'Je voyage avec FasoCovoit : ${t.titreLong}, ${jourCourt(t.heureDepart)} à ${heure(t.heureDepart)}, ${c.vehicule} ${c.plaque}.',
+                        text:
+                            'Je voyage avec FasoCovoit : ${t.titreLong}, ${jourCourt(t.heureDepart)} à ${heure(t.heureDepart)}, ${c.vehicule} ${c.plaque}.',
                       ),
                     );
                     message(context, 'Détails du trajet copiés : collez-les dans WhatsApp ou un SMS.');
@@ -1477,12 +663,16 @@ class _MesTrajetsOngletState extends State<MesTrajetsOnglet> {
               onChanged: (i) => setState(() => _aVenir = i == 0),
             ),
             if (_aVenir) ...[
-              for (final d in demandes) _CarteMaDemande(d),
+              for (final d in demandes) CarteDemandeEnCours(d),
               if (aVenir.isEmpty && demandes.isEmpty) ...[
                 const Carte(child: Text('Aucun trajet à venir.', style: T.petit)),
                 Btn('Rechercher un trajet', onPressed: () => s.allerOnglet(0)),
               ],
-              for (final r in aVenir) _CarteAVenir(r, premier: r == aVenir.firstWhere((x) => x.statut != StatutResa.enAttente, orElse: () => aVenir.first)),
+              for (final r in aVenir)
+                _CarteAVenir(
+                  r,
+                  premier: r == aVenir.firstWhere((x) => x.statut != StatutResa.enAttente, orElse: () => aVenir.first),
+                ),
             ] else ...[
               if (passes.isEmpty) const Carte(child: Text('Aucun trajet passé.', style: T.petit)),
               for (final r in passes) _CartePassee(r),
@@ -1490,73 +680,6 @@ class _MesTrajetsOngletState extends State<MesTrajetsOnglet> {
           ],
         ),
       ],
-    );
-  }
-}
-
-/// Demande publiée par le passager : visible par tous les conducteurs
-/// inscrits, en attente qu'un conducteur qui passe par là l'accepte.
-class _CarteMaDemande extends StatelessWidget {
-  const _CarteMaDemande(this.d);
-  final DemandeTrajet d;
-
-  @override
-  Widget build(BuildContext context) {
-    final s = AppScope.of(context);
-    final inter = d.depart.ville != d.arrivee.ville;
-    return Carte(
-      pointillee: true,
-      bord: C.laterite,
-      epaisseur: 1.5,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Pastille('En attente d’un conducteur', ton: TonPastille.etoile, icon: Icons.campaign_outlined),
-          ),
-          const SizedBox(height: 12),
-          RouteRail(
-            haut: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('${jourRelatif(d.quand, s.maintenant)} · ${heure(d.quand)}', style: T.gras),
-                Doux('${capitaliser(d.depart.quartier)}, ${d.depart.ville}'),
-              ],
-            ),
-            bas: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(capitaliser(d.arrivee.quartier), style: T.gras),
-                Doux('${d.arrivee.ville} · ${pluriel(d.places, 'place')}'),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          Doux(
-            'Visible par tous les conducteurs inscrits. Ceux qui passent par là vers ${heureCourte(d.quand)} '
-            '(à ${inter ? '1 h' : '30 min'} près) sont alertés.',
-            taille: 14,
-          ),
-          const SizedBox(height: 12),
-          Btn(
-            'Simuler la réponse d’un conducteur',
-            hauteur: 50,
-            taille: 15,
-            onPressed: () {
-              Reservation? r;
-              if (essayer(context, () => r = s.simulerPriseEnCharge(d))) {
-                final c = r!.trajet.conducteur;
-                message(
-                  context,
-                  '${c.court} a accepté : il passe vous prendre ${jourRelatif(r!.trajet.heureDepart, s.maintenant).toLowerCase()} à ${heure(r!.trajet.heureDepart)}.',
-                );
-              }
-            },
-          ),
-          Lien('Retirer ma demande', couleur: C.sos, souligne: false, onTap: () => s.retirerDemande(d)),
-        ],
-      ),
     );
   }
 }
@@ -1614,16 +737,16 @@ class _CarteAVenir extends StatelessWidget {
               Expanded(child: Text(t.conducteur.court, style: T.gras)),
               const Icon(Icons.confirmation_number_outlined, size: 20, color: C.vertF),
               const SizedBox(width: 8),
-              const Text('Mon billet', style: TextStyle(fontWeight: FontWeight.w700, color: C.vertF)),
+              const Text(
+                'Mon billet',
+                style: TextStyle(fontWeight: FontWeight.w700, color: C.vertF),
+              ),
             ],
           ),
         ],
       ],
     );
-    void ouvrirResa() => ouvrir(
-      context,
-      attente ? AttenteEcran(reservation: r) : BilletEcran(reservation: r),
-    );
+    void ouvrirResa() => ouvrir(context, attente ? AttenteEcran(reservation: r) : BilletEcran(reservation: r));
     return premier && !attente
         ? Carte.sel(onTap: ouvrirResa, child: contenu)
         : Carte(onTap: ouvrirResa, child: contenu);
@@ -1661,7 +784,9 @@ class _CartePassee extends StatelessWidget {
                 const Doux('Sans frais', gras: true)
               else
                 Text(
-                  remb == 100 ? 'Remboursé 100 %' : (r.rembourse > 0 ? 'Remboursé ${fcfa(r.rembourse)}' : 'Non remboursé'),
+                  remb == 100
+                      ? 'Remboursé 100 %'
+                      : (r.rembourse > 0 ? 'Remboursé ${fcfa(r.rembourse)}' : 'Non remboursé'),
                   style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: C.vertF),
                 ),
             ],
@@ -1786,7 +911,11 @@ class ReglesCarte extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final lignes = interVilles
-        ? const [('Plus de 24 h avant le départ', 100), ('Entre 24 h et 2 h avant', 50), ('Moins de 2 h avant ou absent', 0)]
+        ? const [
+            ('Plus de 24 h avant le départ', 100),
+            ('Entre 24 h et 2 h avant', 50),
+            ('Moins de 2 h avant ou absent', 0),
+          ]
         : const [("Avant l'arrivée du conducteur", 100), ('Après son arrivée ou absent', 0)];
     return Carte(
       padding: const EdgeInsets.all(6),
@@ -1804,10 +933,7 @@ class ReglesCarte extends StatelessWidget {
           for (final (label, pct) in lignes)
             Container(
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: taux == pct ? C.vertC : null,
-                borderRadius: BorderRadius.circular(14),
-              ),
+              decoration: BoxDecoration(color: taux == pct ? C.vertC : null, borderRadius: BorderRadius.circular(14)),
               child: Row(
                 children: [
                   Expanded(

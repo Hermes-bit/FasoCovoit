@@ -49,10 +49,30 @@ polices Figtree et Bricolage Grotesque, en-tête « piste », billet) :
   back-office) : 13 points à cocher (identité, permis, véhicule, assurance,
   entretien avec les originaux et la voiture) avant de pouvoir valider un
   conducteur, ou refus avec un motif que le conducteur voit et corrige.
-- **Passager** : recherche en ville ou entre villes, résultats filtrables, fiche
-  du trajet, paiement (portefeuille avec bonus, Orange Money, Moov Money,
-  espèces), demande en attente, billet avec QR et code de départ, mes trajets,
-  annulation, trajet en cours, SOS, notation, signalement.
+- **Passager, en quelques écrans simples** (parcours inspiré de CityGo, aux
+  couleurs de FasoCovoit) :
+  1. Accueil : « Ne y windiga ! Envie de vous déplacer quelque part ? », une
+     seule barre « Où allez-vous ? » et « Mes covoit’ » (demandes en cours et
+     trajets à venir).
+  2. « Votre itinéraire » : départ (la maison par défaut) et arrivée, avec
+     l'historique, les favoris, les lieux connus et les adresses Google Maps.
+  3. La carte pour vérifier, puis « Confirmer les adresses ».
+  4. Une question par écran : quand (maintenant ou plus tard, avec une roue
+     date et heure), qui voyage (adultes, enfants), ce que vous transportez
+     (bagages, poussette, autre chose), comment vous réglez (portefeuille,
+     Orange Money, Moov Money, espèces), avec le total.
+  5. « Recherche en cours… » : les conducteurs qui passent par là sont
+     contactés. Leurs acceptations arrivent une à une : d'abord ceux dont un
+     trajet publié passe chez le passager, puis des conducteurs alertés qui
+     viennent le chercher à son adresse (démonstration : une réponse toutes les
+     3 secondes).
+  6. Le passager ouvre une acceptation (« Voir détails » pour le profil, les
+     avis et les documents vérifiés du conducteur ; « Accepter » pour l'offre)
+     et confirme dans les 15 minutes : la place est réservée et confirmée, le
+     billet s'affiche.
+  7. « Supprimer ma demande » demande confirmation.
+  Ensuite : billet avec QR et code de départ, mes trajets, annulation, trajet
+  en cours, SOS, notation, signalement.
 - **Messages, notifications et profil**.
 - **Portefeuille** : solde, dépôt, historique, parrainage, retrait, réclamation.
 - **Conducteur** : inscription (documents, validation, abonnement), publication
@@ -65,15 +85,12 @@ polices Figtree et Bricolage Grotesque, en-tête « piste », billet) :
   choisi ; pendant le trajet, « Itinéraire » ouvre Google Maps vers la
   destination. Les coordonnées des quartiers sont approximatives : la recherche
   Google Places pourra les remplacer.
-- **Date et heure du départ** : le passager choisit le jour et l'heure où il
-  veut partir (ou « Partir maintenant »). La recherche ne garde que les
-  conducteurs qui passent à son adresse ce jour-là, pas avant l'heure choisie
-  (moins 1 h entre villes, 30 min en ville), et donne l'heure de passage quand
-  il monte en chemin.
-- **Croisement des adresses** : un trajet convient si le passager peut monter au
-  départ ou le long de la route et descendre près de son adresse, dans le bon
-  sens (8 km entre villes, 3 km pour un trajet en ville). Sans offre, il publie
-  sa demande, visible dans « Mes trajets ».
+- **Date, heure et croisement des adresses** : un trajet publié est proposé au
+  passager si le conducteur passe à son adresse le jour choisi, pas avant
+  l'heure choisie (moins 1 h entre villes, 30 min en ville), s'il peut monter
+  au départ ou le long de la route et descendre près de son adresse, dans le
+  bon sens (8 km entre villes, 3 km pour un trajet en ville). L'heure de
+  passage chez lui est indiquée.
 - **Alertes de course** : tous les passagers inscrits qui cherchent un trajet
   sont visibles par les conducteurs. Quand la route d'un conducteur passe chez
   l'un d'eux à peu près à son heure, l'application l'alerte (accueil, badge,

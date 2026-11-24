@@ -1,9 +1,11 @@
 import 'dart:convert';
 
+import 'package:fasocovoit/formats.dart';
 import 'package:fasocovoit/main.dart';
 import 'package:fasocovoit/model.dart';
 import 'package:fasocovoit/photo.dart';
 import 'package:fasocovoit/screens/compte.dart';
+import 'package:fasocovoit/screens/demande.dart';
 import 'package:fasocovoit/ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -89,8 +91,9 @@ void main() {
     expect(s.telephone, '76 54 32 10');
     expect(s.solde, 0);
     expect(s.reservations, isEmpty);
-    expect(find.text('Ne y windiga, Fatou'), findsOneWidget);
-    expect(find.text('Où allez-vous ?'), findsOneWidget);
+    expect(find.textContaining('Ne y windiga, Fatou !'), findsOneWidget);
+    expect(find.text('Recherchez un nouveau covoit’'), findsOneWidget);
+    expect(find.text('Où allez-vous ?'), findsOneWidget);
   });
 
   testWidgets('compte existant 70 00 00 00 : connexion avec le code SMS', (tester) async {
@@ -112,7 +115,7 @@ void main() {
     expect(find.text('Comment utilisez-vous FasoCovoit ?'), findsOneWidget);
     await toucher(tester, find.text('Je cherche un trajet'));
     expect(s.solde, 7500);
-    expect(find.text('Ne y windiga, Hermès'), findsOneWidget);
+    expect(find.textContaining('Ne y windiga, Hermès !'), findsOneWidget);
   });
 
   testWidgets('conducteur dès l’entrée, sans passer par l’espace passager', (tester) async {
@@ -147,29 +150,69 @@ void main() {
     expect(s.reservations.firstWhere((r) => r.ref == 'FC-8LM2-Q5E').notee, isFalse);
   });
 
-  testWidgets('passager : choisir la date et l’heure, publier sa demande, un conducteur vient', (tester) async {
+  testWidgets('passager : où allez-vous, puis les conducteurs acceptent (en ville, maintenant)', (tester) async {
     final s = await lancer(tester, connecte: true);
-    await toucher(tester, find.text('Demain, mer. 25 nov. · 7 h 00'));
-    // Calendrier puis horloge.
-    await toucher(tester, find.text('26'));
-    await toucher(tester, find.text('OK'));
-    await toucher(tester, find.text('OK'));
-    expect(find.text('Jeu. 26 nov. · 7 h 00'), findsOneWidget);
-
-    await toucher(tester, bouton('Rechercher'));
-    expect(find.textContaining('Aucun conducteur ne passe par là jeu. 26 nov. vers 7 h'), findsOneWidget);
-    await toucher(tester, find.widgetWithText(BtnClair, 'Publier ma demande'));
-    final d = s.demandesTrajet.singleWhere((d) => d.moi);
-    expect(d.quand, DateTime(2026, 11, 26, 7));
-
-    tester.state<NavigatorState>(find.byType(Navigator)).pop();
+    await toucher(tester, find.text('Où allez-vous ?'));
+    expect(find.text('Votre itinéraire'), findsOneWidget);
+    // Départ : la maison (Dassasgho, en favori). Arrivée : on cherche.
+    expect(find.text('Dassasgho, Ouaga'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).last, 'ouaga 2000');
     await tester.pumpAndSettle();
-    await toucher(tester, find.text('Mes trajets').last);
-    expect(find.text('En attente d’un conducteur'), findsOneWidget);
-    await toucher(tester, bouton('Simuler la réponse d’un conducteur'));
-    final r = s.reservations.singleWhere((r) => r.montee == d.depart && r.trajet.heureDepart == d.quand);
-    expect(r.statut, StatutResa.confirmee);
-    expect(find.text('En attente d’un conducteur'), findsNothing);
+    await toucher(tester, find.text('Ouaga 2000'));
+
+    expect(find.text('Confirmer les adresses'), findsOneWidget);
+    await toucher(tester, bouton('Confirmer les adresses'));
+
+    // Une question par écran.
+    expect(find.text('Quand souhaitez-vous partir ?'), findsOneWidget);
+    await toucher(tester, bouton('Suivant'));
+    expect(find.text('Qui voyage ?'), findsOneWidget);
+    await toucher(tester, bouton('Suivant'));
+    expect(find.text('Que transportez-vous ?'), findsOneWidget);
+    await toucher(tester, bouton('Suivant'));
+    expect(find.text('Comment réglez-vous ?'), findsOneWidget);
+    await toucher(tester, find.text('Espèces'));
+    await toucher(tester, bouton('Confirmer'));
+
+    expect(find.text('Recherche en cours…'), findsOneWidget);
+    final d = s.demandesTrajet.singleWhere((d) => d.moi);
+    expect(d.desQuePossible, isTrue);
+    await tester.pump(RechercheEcran.rythme);
+    await tester.pumpAndSettle();
+    expect(find.text('1 acceptation conducteur'), findsOneWidget);
+    expect(find.text('Ousmane B.'), findsOneWidget);
+    await tester.pump(RechercheEcran.rythme);
+    await tester.pumpAndSettle();
+    expect(find.text('2 acceptations conducteurs'), findsOneWidget);
+    expect(find.text('Salif est à environ 6 minutes'), findsOneWidget);
+
+    // Profil du conducteur : avis et vérifications.
+    await toucher(tester, find.widgetWithText(BtnClair, 'Voir détails').first);
+    await toucher(tester, find.text('Détails'));
+    expect(find.text('CNIB et selfie'), findsOneWidget);
+    await toucher(tester, find.byTooltip('Retour'));
+
+    await toucher(tester, find.widgetWithText(Btn, 'Accepter').first);
+    expect(find.text('CONFIRMEZ DANS LES 15 MINUTES'), findsOneWidget);
+    await toucher(tester, bouton('Confirmer'));
+    expect(s.demandesTrajet.contains(d), isFalse);
+    expect(s.reservations.last.statut, StatutResa.confirmee);
+    expect(s.reservations.last.trajet.conducteur.prenom, 'Ousmane');
+    expect(find.text('À MONTRER AU CONDUCTEUR'), findsOneWidget);
+  });
+
+  testWidgets('passager : supprimer sa demande, après confirmation', (tester) async {
+    final s = await lancer(tester, connecte: true);
+    s.demanderTrajet(depart: lDassasgho, arrivee: lUnivOuaga);
+    await tester.pumpAndSettle();
+    await toucher(tester, find.text('Recherche en cours'));
+    expect(find.text('Recherche en cours…'), findsOneWidget);
+    await toucher(tester, find.text('Supprimer ma demande'));
+    expect(find.text('Votre demande va être supprimée, souhaitez-vous continuer ?'), findsOneWidget);
+    await toucher(tester, find.widgetWithText(Btn, 'Supprimer ma demande'));
+    expect(s.demandesTrajet.where((d) => d.moi), isEmpty);
+    expect(find.text('Votre demande a été supprimée.'), findsOneWidget);
+    expect(find.text('Où allez-vous ?'), findsOneWidget);
   });
 
   testWidgets('numéro inconnu sur « J’ai déjà un compte » : création proposée', (tester) async {
@@ -185,23 +228,6 @@ void main() {
     expect(s.compteExiste('65432109'), isFalse);
   });
 
-  testWidgets('passager : choisir un trajet en ville', (tester) async {
-    await lancer(tester, connecte: true);
-    await toucher(tester, find.text('En ville'));
-    expect(find.text('Ouagadougou, Dassasgho'), findsOneWidget);
-    await toucher(tester, bouton('Rechercher'));
-    expect(find.text('Dassasgho → Ouaga 2000'), findsOneWidget);
-    expect(find.text('Ousmane B.'), findsOneWidget);
-  });
-
-  testWidgets('passager : les offres se croisent avec son adresse, sinon il publie sa demande', (tester) async {
-    final s = await lancer(tester, connecte: true);
-    await toucher(tester, bouton('Rechercher'));
-    expect(find.textContaining('de votre adresse'), findsWidgets);
-    await toucher(tester, find.widgetWithText(BtnClair, 'Publier ma demande'));
-    expect(s.demandesTrajet.where((d) => d.moi), hasLength(1));
-  });
-
   testWidgets('connexion Google annoncée mais pas encore branchée', (tester) async {
     await lancer(tester);
     await toucher(tester, find.text('Continuer avec Google'));
@@ -209,24 +235,35 @@ void main() {
     expect(find.textContaining('70 00 00 00'), findsOneWidget);
   });
 
-  testWidgets('réserver avec le portefeuille, puis annuler selon les règles', (tester) async {
+  testWidgets('entre villes, plus tard, payé avec le portefeuille, puis annulé selon les règles', (tester) async {
     final s = await lancer(tester, connecte: true);
+    await toucher(tester, find.text('Où allez-vous ?'));
+    // Départ : la gare routière de Ouaga. Arrivée : le centre de Koudougou.
+    await tester.enterText(find.byType(TextField).first, 'gare');
+    await tester.pumpAndSettle();
+    await toucher(tester, find.text('Gare routière').first);
+    await tester.enterText(find.byType(TextField).last, 'koudougou');
+    await tester.pumpAndSettle();
+    await toucher(tester, find.text('Centre-ville'));
+    await toucher(tester, bouton('Confirmer les adresses'));
 
-    await toucher(tester, bouton('Rechercher'));
-    expect(find.text('Ouagadougou → Koudougou'), findsOneWidget);
-    await toucher(tester, find.text('Issouf K.').first);
+    // Entre villes : « Plus tard », demain 7 h, proposé d'office.
+    expect(find.text('Demain, mer. 25 nov. · 7 h 00'), findsOneWidget);
+    for (var i = 0; i < 3; i++) {
+      await toucher(tester, bouton('Suivant'));
+    }
+    // Portefeuille choisi d'office : le solde le permet.
+    expect(find.text('Solde ${fcfa(7500)}'), findsOneWidget);
+    await toucher(tester, bouton('Confirmer'));
 
-    expect(find.text('Toyota Corolla grise'), findsOneWidget);
-    await toucher(tester, bouton('Continuer'));
-
-    expect(find.text('Comment voulez-vous payer ?'), findsOneWidget);
-    await toucher(tester, bouton('Payer avec mon portefeuille'));
-
-    expect(find.text('Issouf a 30 minutes pour accepter'), findsOneWidget);
+    await tester.pump(RechercheEcran.rythme);
+    await tester.pumpAndSettle();
+    expect(find.text('Issouf K.'), findsOneWidget);
+    await toucher(tester, find.widgetWithText(Btn, 'Accepter').first);
+    await toucher(tester, bouton('Confirmer'));
+    // 2 500 F dont 500 F de bonus ; le conducteur avait déjà accepté.
     expect(s.depose, 5000);
     expect(s.bonus, 0);
-
-    await toucher(tester, bouton('Simuler l’acceptation du conducteur'));
     expect(find.text('FC-7QK4-M9R'), findsOneWidget);
     expect(find.text('À MONTRER AU CONDUCTEUR'), findsOneWidget);
 

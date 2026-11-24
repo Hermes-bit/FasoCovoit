@@ -158,23 +158,61 @@ void main() {
       );
     });
 
-    test('le passager publie sa demande à son heure, un conducteur vient le prendre', () {
+    test('demande du passager : les conducteurs acceptent, il en choisit un', () {
       final s = etat();
-      final q = DateTime(2026, 11, 26, 8, 30);
       expect(
-        () => s.publierDemande(depart: lPatteOie, arrivee: lKoudS7, quand: maintenant.subtract(const Duration(hours: 1))),
+        () => s.demanderTrajet(depart: lPatteOie, arrivee: lKoudS7, quand: maintenant.subtract(const Duration(hours: 1))),
         throwsA(isA<ErreurMetier>()),
       );
-      final d = s.publierDemande(depart: lPatteOie, arrivee: lKoudS7, quand: q);
-      final r = s.simulerPriseEnCharge(d);
-      expect(r.statut, StatutResa.confirmee);
-      expect(r.trajet.heureDepart, q);
-      expect(r.trajet.depart, lPatteOie);
-      expect(r.montee, lPatteOie);
-      expect(r.descente, lKoudS7);
+      expect(
+        () => s.demanderTrajet(depart: lPatteOie, arrivee: lKoudS7, adultes: 3, enfants: 2),
+        throwsA(isA<ErreurMetier>()),
+        reason: '4 places au plus',
+      );
+      // Demain 7 h : Issouf (7 h) et Boukary (16 h) ont publié Ouaga → Koudougou.
+      final d = s.demanderTrajet(
+        depart: lOuagaGare,
+        arrivee: lKoudCentre,
+        quand: DateTime(2026, 11, 25, 7),
+        bagages: 1,
+        paiement: Paiement.portefeuille,
+      );
+      expect(d.bagagesTexte, '1 bagage');
+      expect(s.lieuxRecents.first, lKoudCentre);
+      final issouf = s.recevoirOffre(d)!;
+      expect(issouf.trajet.id, 't1');
+      expect(s.recevoirOffre(d)!.trajet.id, 't3');
+      expect(s.recevoirOffre(d), isNull, reason: 'les conducteurs de la ligne ont déjà répondu');
+      expect(d.contactes, greaterThan(0));
+
+      final r = s.accepterOffre(d, issouf);
+      expect(r.statut, StatutResa.confirmee, reason: 'le conducteur a déjà accepté');
+      expect(r.montee, lOuagaGare);
+      expect(s.depose, 5000, reason: '2 500 F dont 500 F de bonus');
       expect(s.demandesTrajet.contains(d), isFalse);
-      expect(s.notifications.first.titre, 'Course acceptée');
+      expect(s.notifications.first.titre, 'Demande acceptée');
       expect(s.aVenir, contains(r));
+    });
+
+    test('maintenant, en ville : un trajet publié, puis un conducteur alerté', () {
+      var h = maintenant;
+      final s = AppState(horloge: () => h);
+      final d = s.demanderTrajet(depart: lDassasgho, arrivee: lOuaga2000);
+      expect(d.desQuePossible, isTrue);
+      expect(s.recevoirOffre(d)!.trajet.conducteur.prenom, 'Ousmane');
+      final alerte = s.recevoirOffre(d)!;
+      expect(alerte.trajet.conducteur.prenom, 'Salif');
+      expect(alerte.minutes, 6);
+      expect(alerte.trajet.depart, lDassasgho, reason: 'il vient à l’adresse du passager');
+      expect(alerte.prix, calculerTarif(Ligne.entre(lDassasgho, lOuaga2000)).conseille);
+      expect(s.recevoirOffre(d), isNull);
+
+      // 15 minutes pour confirmer, puis l'acceptation expire.
+      h = h.add(const Duration(minutes: 16));
+      expect(s.offresValables(d), isEmpty);
+      expect(() => s.accepterOffre(d, alerte), throwsA(isA<ErreurMetier>()));
+      s.retirerDemande(d);
+      expect(s.demandesTrajet.contains(d), isFalse);
     });
 
     test('croisement : montée sur la route, dépose près de l’adresse, dans le bon sens', () {
@@ -545,7 +583,7 @@ void main() {
       expect(() => s.prendreCourse(c), throwsA(isA<ErreurMetier>()), reason: 'déjà prise');
 
       // Le passager connecté publie sa propre demande : pas d'alerte pour lui-même.
-      final mienne = s.publierDemande(depart: lTampouy, arrivee: lZogona, quand: maintenant);
+      final mienne = s.demanderTrajet(depart: lTampouy, arrivee: lZogona);
       expect(mienne.moi, isTrue);
       expect(s.coursesPossibles.any((c) => c.demande == mienne), isFalse);
       expect(s.passagersSansCourse.contains(mienne), isFalse);

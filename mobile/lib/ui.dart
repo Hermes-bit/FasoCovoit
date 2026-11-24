@@ -105,6 +105,10 @@ class Piste extends StatelessWidget {
   }
 }
 
+/// Ombre légère des éléments posés au-dessus (barre de recherche, étiquettes
+/// sur la carte, cartes d'offre).
+const ombreDouce = [BoxShadow(color: Color(0x1A2A1A12), blurRadius: 18, offset: Offset(0, 6))];
+
 /// Barre claire avec retour, titre et sous-titre.
 class Barre extends StatelessWidget {
   const Barre({
