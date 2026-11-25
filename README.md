@@ -118,7 +118,18 @@ polices Figtree et Bricolage Grotesque, en-tête « piste », billet) :
   écran du trajet en cours) : il prend la course ou l'ignore. Pour un passager
   qu'aucun trajet ne croise, « Accepter la course » publie le trajet depuis son
   adresse, à son heure, et l'y ajoute.
-- **Colis** : aperçu des écrans de la version 2.
+- **Ouverture et changement d'espace** (repris de CityGo) : à l'ouverture, le
+  logo FasoCovoit arrive sur fond latérite (l'épingle tombe, le nom glisse, le
+  slogan monte), tout de suite, pendant que l'application se charge. Puis le
+  fond se resserre en cercle sur le logo et l'accueil monte depuis le bas. Le
+  même rideau se joue quand on passe de l'espace passager à l'espace
+  conducteur, et inversement (la première fois, après la fiche « Mode
+  conducteur » et « J'ai compris »).
+- **Colis** (aperçu de la version 2) : en-tête à encoche avec « En ville /
+  Entre villes », puis quatre étapes numérotées : le trajet du colis, sa taille
+  (enveloppe, sac ou carton, avec le prix), ce qu'il contient (valeur déclarée
+  et photos ouvert puis fermé), qui le récupère (code par SMS), et les objets
+  interdits.
 
 Les règles de la maquette sont réellement calculées : plafond et prix conseillé
 d'après les tarifs (Ouaga–Koudougou : plancher 1 000 F, conseillé 1 800 F,
@@ -151,7 +162,17 @@ suspension du conducteur après 3 annulations en 30 jours.
 L'application occupe toute la fenêtre, sur téléphone comme sur ordinateur. Sur
 téléphone, l'ajouter à l'écran d'accueil (menu du navigateur → « Ajouter à
 l'écran d'accueil » ou « Installer l'application ») l'ouvre en plein écran, sans
-la barre du navigateur.
+la barre du navigateur. Le fond de la page est latérite (plus de blanc pendant
+le chargement), et les marges de l'iPhone (encoche, barre d'accueil) sont
+transmises aux écrans : l'en-tête passe sous l'heure sans que le contenu la
+touche.
+
+Sur iPhone, iOS lit ces réglages au moment de l'ajout à l'écran d'accueil :
+après une mise à jour, il faut retirer l'icône et l'ajouter de nouveau. Depuis
+iOS 26.1, iOS peut aussi garder une bande blanche au-dessus des applications
+Web ajoutées à l'écran d'accueil ; c'est un défaut connu d'iOS
+([WebKit 301994](https://bugs.webkit.org/show_bug.cgi?id=301994)), qu'une
+page Web ne peut pas peindre.
 
 ### Raccourcis de démonstration
 - « Simuler l'acceptation du conducteur » et « Vérification par l'équipe
@@ -170,7 +191,10 @@ la barre du navigateur.
 
 Le code est organisé ainsi dans `mobile/lib` : `model.dart` (règles et données
 en mémoire), `ui.dart` et `theme.dart` (composants du thème), `screens/`
-(un fichier par parcours).
+(un fichier par parcours), `ouverture.dart` (logo animé, changement d'espace,
+marges de l'iPhone). Le logo est découpé en quatre calques dans
+`mobile/assets/logo`, repris par `web/index.html` avant le chargement de
+Flutter.
 
 Le back-office de l'équipe (écrans 32 à 35, 42, 50 à 52, 54 et 58 de la
 maquette, prévu en Next.js) n'est pas encore construit.

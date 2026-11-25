@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'model.dart';
+import 'ouverture.dart';
 import 'screens/compte.dart';
 import 'screens/espace_conducteur.dart';
 import 'screens/passager.dart';
@@ -27,6 +28,8 @@ class FasoCovoitApp extends StatelessWidget {
       supportedLocales: const [Locale('fr')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
       theme: construireTheme(),
+      // Logo animé à l'ouverture et au changement d'espace, marges de l'iPhone.
+      builder: (context, child) => Ouverture(child: child!),
       home: const Racine(),
     ),
   );

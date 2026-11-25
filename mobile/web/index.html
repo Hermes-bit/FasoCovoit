@@ -34,8 +34,113 @@
 
   <title>FasoCovoit</title>
   <link rel="manifest" href="manifest.json">
+
+  <!-- Écran d'ouverture : fond latérite et logo animé, affichés tout de suite,
+       pendant que Flutter se charge. Flutter reprend ensuite le même logo
+       (lib/ouverture.dart) et l'efface en cercle. -->
+  <link rel="preload" as="image" href="assets/assets/logo/logo_faso.png">
+  <link rel="preload" as="image" href="assets/assets/logo/logo_epingle.png">
+  <link rel="preload" as="image" href="assets/assets/logo/logo_voit.png">
+  <link rel="preload" as="image" href="assets/assets/logo/logo_slogan.png">
+  <style>
+    html, body { margin: 0; background: #B5532A; }
+    #faso-ouverture {
+      position: fixed; inset: 0; z-index: 10;
+      display: flex; align-items: center; justify-content: center;
+      background: #B5532A;
+      transition: opacity .15s linear;
+    }
+    #faso-ouverture.fini { opacity: 0; }
+    #faso-ouverture .logo {
+      position: relative;
+      width: min(72vw, 320px);
+      aspect-ratio: 886 / 279;
+    }
+    #faso-ouverture img {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      opacity: 0;
+    }
+    #faso-ouverture.pret img { animation: .55s cubic-bezier(.2, .8, .2, 1) both; }
+    #faso-ouverture.pret .epingle { animation-name: faso-chute; animation-duration: .7s; animation-timing-function: linear; }
+    #faso-ouverture.pret .faso { animation-name: faso-gauche; animation-delay: .25s; }
+    #faso-ouverture.pret .voit { animation-name: faso-droite; animation-delay: .25s; }
+    #faso-ouverture.pret .slogan { animation-name: faso-monte; animation-delay: .6s; animation-duration: .5s; }
+    @keyframes faso-chute {
+      0% { opacity: 0; transform: translateY(-70%); animation-timing-function: cubic-bezier(.55, 0, 1, .45); }
+      45% { opacity: 1; transform: translateY(3%); animation-timing-function: cubic-bezier(0, .55, .45, 1); }
+      65% { opacity: 1; transform: translateY(-6%); animation-timing-function: cubic-bezier(.55, 0, 1, .45); }
+      82% { opacity: 1; transform: translateY(1%); animation-timing-function: cubic-bezier(0, .55, .45, 1); }
+      100% { opacity: 1; transform: none; }
+    }
+    @keyframes faso-gauche { from { opacity: 0; transform: translateX(-5%); } to { opacity: 1; transform: none; } }
+    @keyframes faso-droite { from { opacity: 0; transform: translateX(5%); } to { opacity: 1; transform: none; } }
+    @keyframes faso-monte { from { opacity: 0; transform: translateY(10%); } to { opacity: 1; transform: none; } }
+    /* Si le chargement dure, trois points patientent sous le logo. */
+    #faso-ouverture .attente {
+      position: absolute; left: 0; right: 0; top: calc(50% + min(72vw, 320px) * 279 / 886 / 2 + 36px);
+      display: flex; justify-content: center; gap: 8px;
+      opacity: 0; animation: faso-apparait .3s linear 1.6s both;
+    }
+    #faso-ouverture .attente span {
+      width: 8px; height: 8px; border-radius: 50%; background: #FFFBF3;
+      animation: faso-point 1s ease-in-out infinite;
+    }
+    #faso-ouverture .attente span:nth-child(2) { animation-delay: .15s; }
+    #faso-ouverture .attente span:nth-child(3) { animation-delay: .3s; }
+    @keyframes faso-apparait { to { opacity: .8; } }
+    @keyframes faso-point { 0%, 100% { opacity: .35; transform: scale(.8); } 50% { opacity: 1; transform: none; } }
+    @media (prefers-reduced-motion: reduce) {
+      #faso-ouverture.pret img { animation: none; opacity: 1; }
+      #faso-ouverture .attente span { animation: none; }
+    }
+    /* Marges de l'iPhone (encoche, barre d'accueil), lues par lib/page_web.dart. */
+    #faso-marges {
+      position: fixed; top: 0; left: 0; width: 0; height: 0;
+      visibility: hidden; pointer-events: none;
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    }
+  </style>
 </head>
 <body>
+  <div id="faso-ouverture" aria-hidden="true">
+    <div class="logo">
+      <img class="faso" src="assets/assets/logo/logo_faso.png" alt="">
+      <img class="voit" src="assets/assets/logo/logo_voit.png" alt="">
+      <img class="slogan" src="assets/assets/logo/logo_slogan.png" alt="">
+      <img class="epingle" src="assets/assets/logo/logo_epingle.png" alt="">
+    </div>
+    <div class="attente"><span></span><span></span><span></span></div>
+  </div>
+  <div id="faso-marges"></div>
+  <script>
+    // Écran d'ouverture et marges de l'écran, utilisés par lib/page_web.dart.
+    window.fasoPage = (function () {
+      const ecran = document.getElementById('faso-ouverture');
+      const sonde = document.getElementById('faso-marges');
+      const calme = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const images = Array.from(ecran.querySelectorAll('img'));
+      const chargees = Promise.all(images.map((i) => i.decode().catch(() => {})));
+      const delai = new Promise((ok) => setTimeout(ok, 1200));
+      // L'animation démarre quand le logo est prêt (ou au bout de 1,2 s).
+      const intro = Promise.race([chargees, delai]).then(() => {
+        ecran.classList.add('pret');
+        return new Promise((ok) => setTimeout(ok, calme ? 0 : 1150));
+      });
+      return {
+        intro: intro,
+        retirer: function () {
+          if (!ecran.isConnected || ecran.classList.contains('fini')) return;
+          ecran.classList.add('fini');
+          setTimeout(() => ecran.remove(), 200);
+        },
+        marges: function () {
+          const s = getComputedStyle(sonde);
+          return [s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft]
+            .map((v) => parseFloat(v) || 0).join(',');
+        },
+      };
+    })();
+  </script>
   <!--
     You can customize the "flutter_bootstrap.js" script.
     This is useful to provide a custom configuration to the Flutter loader

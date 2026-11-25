@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:fasocovoit/formats.dart';
 import 'package:fasocovoit/main.dart';
 import 'package:fasocovoit/model.dart';
+import 'package:fasocovoit/ouverture.dart';
 import 'package:fasocovoit/photo.dart';
 import 'package:fasocovoit/screens/compte.dart';
 import 'package:fasocovoit/screens/demande.dart';
@@ -126,11 +127,19 @@ void main() {
     await tester.enterText(find.byType(TextField), s.dernierCodeSms!);
     await toucher(tester, bouton('Me connecter'));
 
+    // Première entrée : la fiche « Mode conducteur », puis « J’ai compris »
+    // ouvre l'espace conducteur derrière le logo FasoCovoit.
     await toucher(tester, find.text('Je propose mes trajets'));
-    expect(s.mode, Mode.conducteur);
-    // Première entrée : la fiche « Mode conducteur ».
     expect(find.text('Le covoiturage, c’est :'), findsOneWidget);
-    await toucher(tester, bouton('J’ai compris'));
+    expect(s.espaceAChoisir, isTrue);
+    await tester.tap(bouton('J’ai compris'));
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.byType(Ouverture), findsOneWidget);
+    expect(find.image(const AssetImage('assets/logo/logo_epingle.png')), findsOneWidget);
+    await tester.pumpAndSettle();
+    expect(find.image(const AssetImage('assets/logo/logo_epingle.png')), findsNothing);
+    expect(s.mode, Mode.conducteur);
+    expect(s.introConducteurVue, isTrue);
     expect(find.text('Bonjour Hermès'), findsOneWidget);
     expect(find.text('Activez votre compte conducteur'), findsOneWidget);
 
@@ -142,6 +151,71 @@ void main() {
     await toucher(tester, find.text('Accueil'));
     await toucher(tester, find.widgetWithText(Btn, 'Envoyer mes documents'));
     expect(find.text('0 document sur 6'), findsOneWidget);
+  });
+
+  testWidgets('ouverture : le logo FasoCovoit couvre l’écran, puis l’accueil monte', (tester) async {
+    tester.view.physicalSize = const Size(390 * 3, 844 * 3);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final s = AppState(horloge: () => maintenant)..connecter();
+    await tester.pumpWidget(FasoCovoitApp(state: s));
+    final logo = find.image(const AssetImage('assets/logo/logo_faso.png'));
+    final barre = find.text('Où allez-vous ?');
+    expect(logo, findsOneWidget);
+    // Tant que le logo est là, l'accueil est construit mais ne répond pas.
+    expect(barre, findsOneWidget);
+    expect(barre.hitTestable(), findsNothing);
+    await tester.pumpAndSettle();
+    expect(logo, findsNothing);
+    expect(barre.hitTestable(), findsOneWidget);
+    expect(find.textContaining('Ne y windiga, Hermès'), findsOneWidget);
+  });
+
+  testWidgets('changer d’espace : logo, cercle, puis l’autre accueil monte', (tester) async {
+    final s = await lancer(tester, connecte: true);
+    s.vuIntroConducteur();
+    final logo = find.image(const AssetImage('assets/logo/logo_epingle.png'));
+
+    await tester.tap(find.text('Conducteur').first);
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(logo, findsOneWidget);
+    expect(s.mode, Mode.passager, reason: 'l’espace change quand le logo couvre l’écran');
+    await tester.pumpAndSettle();
+    expect(logo, findsNothing);
+    expect(s.mode, Mode.conducteur);
+    expect(find.text('Bonjour Hermès'), findsOneWidget);
+
+    await toucher(tester, find.text('Menu'));
+    final passager = find.widgetWithText(BtnClair, 'Passer en mode passager');
+    await tester.scrollUntilVisible(
+      passager,
+      300,
+      scrollable: find.descendant(of: find.byType(MenuConducteurOnglet), matching: find.byType(Scrollable)).first,
+    );
+    await toucher(tester, passager);
+    expect(s.mode, Mode.passager);
+    expect(find.textContaining('Ne y windiga, Hermès'), findsOneWidget);
+  });
+
+  testWidgets('envoyer un colis : en ville ou vers une autre ville, taille et prix, puis suivi', (tester) async {
+    await lancer(tester, connecte: true);
+    await toucher(tester, find.text('Envoyer un colis'));
+    expect(find.text('Le trajet du colis'), findsOneWidget);
+    expect(find.text('Koudougou · Secteur 7'), findsOneWidget);
+    Finder prix(int n) => find.descendant(of: find.byType(Pied), matching: find.text(fcfa(n)));
+    expect(prix(1000), findsOneWidget);
+
+    await toucher(tester, find.text('En ville'));
+    expect(find.text('Ouagadougou · Ouaga 2000'), findsOneWidget);
+    await toucher(tester, find.text('L'));
+    expect(prix(3500), findsOneWidget);
+
+    await toucher(tester, find.text('Objets interdits'));
+    expect(find.textContaining('animaux vivants'), findsOneWidget);
+    await toucher(tester, bouton('Compris'));
+
+    await toucher(tester, bouton('Trouver un conducteur'));
+    expect(find.text('Colis CL-4KM7-PQ2'), findsOneWidget);
   });
 
   testWidgets('noter le conducteur : « Retour » ramène à l’écran précédent', (tester) async {

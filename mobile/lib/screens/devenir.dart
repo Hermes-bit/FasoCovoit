@@ -4,11 +4,13 @@ import 'package:flutter/material.dart';
 
 import '../formats.dart';
 import '../model.dart';
+import '../ouverture.dart';
 import '../painters.dart';
 import '../photo.dart';
 import '../theme.dart';
 import '../ui.dart';
 import 'conducteur.dart';
+import 'espace_conducteur.dart';
 import 'messages_profil.dart';
 
 // ---------------------------------------------------------------------------
@@ -506,13 +508,7 @@ class ValidationEcran extends StatelessWidget {
             else if (!s.estConducteur)
               Btn('Compte validé : choisir mon abonnement', onPressed: () => ouvrir(context, const OffresEcran()))
             else
-              Btn(
-                'Aller au mode conducteur',
-                onPressed: () {
-                  s.basculerMode(Mode.conducteur);
-                  retourAccueil(context);
-                },
-              ),
+              Btn('Aller au mode conducteur', onPressed: () => entrerModeConducteur(context)),
             BtnClair(
               s.mode == Mode.conducteur ? 'Retour à mon espace conducteur' : 'Revenir au mode passager',
               onPressed: () => retourAccueil(context),
@@ -838,9 +834,11 @@ class AboActifEcran extends StatelessWidget {
                       final nav = Navigator.of(context);
                       // Il vient de s'inscrire : pas besoin de la fiche « Mode conducteur ».
                       s.vuIntroConducteur();
-                      s.basculerMode(Mode.conducteur);
-                      nav.popUntil((r) => r.isFirst);
-                      nav.push(MaterialPageRoute(builder: (_) => const PublierEcran()));
+                      Ouverture.changer(context, () {
+                        s.basculerMode(Mode.conducteur);
+                        nav.popUntil((r) => r.isFirst);
+                        nav.push(MaterialPageRoute(builder: (_) => const PublierEcran()));
+                      });
                     },
                   ),
                   Lien(

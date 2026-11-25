@@ -674,6 +674,142 @@ class IllustrationClesPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
+/// Doré plus sombre : faces dans l'ombre des cartons.
+const _orOmbre = Color(0xFFD99F00);
+
+/// Carton de trois quarts, fermé par un ruban : face avant, côté, dessus.
+void _carton(Canvas c, {required List<Offset> avant, required List<Offset> cote, required List<Offset> dessus}) {
+  _remplir(c, _poly(avant), C.etoile, trait: 2.2);
+  _remplir(c, _poly(cote), _orOmbre, trait: 2.2);
+  _remplir(c, _poly(dessus), C.etoileC, trait: 2.2);
+}
+
+/// « Envoyer un colis » : un carton scotché qui file, avec son étiquette.
+class IllustrationColisPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final s = math.min(size.width / 150, size.height / 120);
+    canvas.save();
+    canvas.translate((size.width - 150 * s) / 2, (size.height - 120 * s) / 2);
+    canvas.scale(s);
+    canvas.drawOval(const Rect.fromLTWH(34, 104, 96, 9), Paint()..color = const Color(0x33000000));
+    // Traits de vitesse.
+    final vitesse = Paint()
+      ..color = C.surface
+      ..strokeWidth = 4
+      ..strokeCap = StrokeCap.round;
+    for (final (x0, x1, y) in const [(10.0, 24.0, 66.0), (2.0, 20.0, 78.0), (12.0, 24.0, 90.0)]) {
+      canvas.drawLine(Offset(x0, y), Offset(x1, y), vitesse);
+    }
+    _carton(
+      canvas,
+      avant: const [Offset(32, 54), Offset(90, 66), Offset(90, 108), Offset(32, 96)],
+      cote: const [Offset(90, 66), Offset(126, 52), Offset(126, 94), Offset(90, 108)],
+      dessus: const [Offset(32, 54), Offset(68, 40), Offset(126, 52), Offset(90, 66)],
+    );
+    // Ruban vert sur le dessus, qui redescend sur le côté.
+    _remplir(
+      canvas,
+      _poly(const [Offset(46, 48.5), Offset(54, 45.5), Offset(112, 57.5), Offset(104, 60.5)]),
+      C.vert,
+      trait: 2,
+    );
+    _remplir(
+      canvas,
+      _poly(const [Offset(104, 60.5), Offset(112, 57.5), Offset(112, 99.5), Offset(104, 102.5)]),
+      C.vert,
+      trait: 2,
+    );
+    // Étiquette d'adresse.
+    _remplir(
+      canvas,
+      _poly(const [Offset(42, 68), Offset(70, 74), Offset(70, 90), Offset(42, 84)]),
+      C.surface,
+      trait: 2,
+    );
+    canvas.drawLine(const Offset(47, 74), const Offset(64, 77.6), _contour(1.8));
+    canvas.drawLine(const Offset(47, 80), const Offset(58, 82.4), _contour(1.8));
+    // Épingle de destination.
+    final epingle = Path()
+      ..moveTo(130, 40)
+      ..cubicTo(124, 32, 119, 27, 119, 20)
+      ..arcToPoint(const Offset(141, 20), radius: const Radius.circular(11))
+      ..cubicTo(141, 27, 136, 32, 130, 40)
+      ..close();
+    _remplir(canvas, epingle, C.surface, trait: 2.2);
+    canvas.drawCircle(const Offset(130, 20), 4, Paint()..color = C.laterite);
+    _scintille(canvas, const Offset(22, 30), 7);
+    _scintille(canvas, const Offset(98, 22), 5, plein: true);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// Taille d'un colis : 0 = enveloppe, 1 = sac, 2 = carton.
+class TailleColisPainter extends CustomPainter {
+  TailleColisPainter(this.taille);
+  final int taille;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final s = math.min(size.width / 64, size.height / 52);
+    canvas.save();
+    canvas.translate((size.width - 64 * s) / 2, (size.height - 52 * s) / 2);
+    canvas.scale(s);
+    canvas.drawOval(const Rect.fromLTWH(10, 46, 44, 5), Paint()..color = C.sable2);
+    switch (taille) {
+      case 0:
+        final enveloppe = Path()
+          ..addRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(8, 14, 48, 30), const Radius.circular(4)));
+        _remplir(canvas, enveloppe, C.surface, trait: 2);
+        canvas.drawPath(
+          Path()
+            ..moveTo(9, 16)
+            ..lineTo(32, 32)
+            ..lineTo(55, 16),
+          _contour(2),
+        );
+        canvas.drawRect(const Rect.fromLTWH(44, 18, 8, 7), Paint()..color = C.laterite);
+      case 1:
+        canvas.drawPath(
+          Path()
+            ..moveTo(23, 20)
+            ..cubicTo(23, 6, 41, 6, 41, 20),
+          _contour(3),
+        );
+        final sac = Path()
+          ..moveTo(14, 20)
+          ..lineTo(50, 20)
+          ..lineTo(55, 44)
+          ..quadraticBezierTo(55, 46, 52, 46)
+          ..lineTo(12, 46)
+          ..quadraticBezierTo(9, 46, 9, 44)
+          ..close();
+        _remplir(canvas, sac, C.vert, trait: 2);
+        canvas.drawLine(const Offset(18, 28), const Offset(46, 28), _contour(1.8));
+      default:
+        _carton(
+          canvas,
+          avant: const [Offset(8, 22), Offset(36, 28), Offset(36, 48), Offset(8, 42)],
+          cote: const [Offset(36, 28), Offset(56, 20), Offset(56, 40), Offset(36, 48)],
+          dessus: const [Offset(8, 22), Offset(28, 14), Offset(56, 20), Offset(36, 28)],
+        );
+        _remplir(
+          canvas,
+          _poly(const [Offset(16, 19), Offset(20, 17.5), Offset(48, 23.5), Offset(44, 25)]),
+          C.vert,
+          trait: 1.6,
+        );
+    }
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(TailleColisPainter old) => old.taille != taille;
+}
+
 /// « Ma voiture » : une berline de trois quarts, à la couleur choisie.
 class VoiturePainter extends CustomPainter {
   VoiturePainter(this.couleur);

@@ -4,7 +4,7 @@
     "start_url": ".",
     "display": "fullscreen",
     "display_override": ["fullscreen", "standalone"],
-    "background_color": "#F3E7D3",
+    "background_color": "#B5532A",
     "theme_color": "#B5532A",
     "description": "FasoCovoit : covoiturage à Ouagadougou et vers Koudougou (prototype).",
     "orientation": "portrait-primary",

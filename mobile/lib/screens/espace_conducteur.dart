@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../carte.dart';
 import '../formats.dart';
 import '../model.dart';
+import '../ouverture.dart';
 import '../painters.dart';
 import '../photo.dart';
 import '../theme.dart';
@@ -20,21 +21,39 @@ import 'portefeuille.dart';
 // Espace conducteur, en cinq onglets : Accueil, Covoit’, Proposer, Gains, Menu
 // ---------------------------------------------------------------------------
 
-/// Passe dans l'espace conducteur ; la première fois, la fiche « Mode
-/// conducteur » rappelle ce qu'est le covoiturage.
+/// Passe dans l'espace conducteur. La première fois, la fiche « Mode
+/// conducteur » rappelle d'abord ce qu'est le covoiturage ; « J’ai compris »
+/// lance le changement d'espace, « Fermer » reste là où l'on était.
 void entrerModeConducteur(BuildContext context, {int onglet = 0}) {
   final s = AppScope.read(context);
-  final nav = Navigator.of(context);
-  s.basculerMode(Mode.conducteur, onglet: onglet);
-  presenterModeConducteur(nav, s);
+  if (s.introConducteurVue) {
+    changerEspace(context, Mode.conducteur, onglet: onglet);
+    return;
+  }
+  // Un message en cours (« Bon retour… ») cacherait le bouton « J’ai compris ».
+  ScaffoldMessenger.maybeOf(context)?.hideCurrentSnackBar();
+  Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      fullscreenDialog: true,
+      builder: (_) => IntroConducteurEcran(onCompris: (c) => changerEspace(c, Mode.conducteur, onglet: onglet)),
+    ),
+  );
 }
 
-void presenterModeConducteur(NavigatorState nav, AppState s) {
-  if (s.introConducteurVue) return;
-  s.vuIntroConducteur();
-  // Un message en cours (« Bon retour… ») cacherait le bouton « J’ai compris ».
-  ScaffoldMessenger.maybeOf(nav.context)?.hideCurrentSnackBar();
-  nav.push(MaterialPageRoute<void>(fullscreenDialog: true, builder: (_) => const IntroConducteurEcran()));
+/// Change d'espace (passager ⇄ conducteur, ou premier choix à l'entrée)
+/// derrière le rideau FasoCovoit : logo, cercle qui se resserre, puis
+/// l'accueil de l'autre espace qui monte.
+Future<void> changerEspace(BuildContext context, Mode m, {int onglet = 0}) {
+  final s = AppScope.read(context);
+  final nav = Navigator.of(context);
+  return Ouverture.changer(context, () {
+    nav.popUntil((r) => r.isFirst);
+    if (s.espaceAChoisir) {
+      s.choisirEspace(m);
+    } else {
+      s.basculerMode(m, onglet: onglet);
+    }
+  });
 }
 
 class EspaceConducteur extends StatelessWidget {
@@ -1437,7 +1456,7 @@ class MenuConducteurOnglet extends StatelessWidget {
         BtnClair(
           'Passer en mode passag${s.femme ? 'ère' : 'er'}',
           icon: Icons.person_outline_rounded,
-          onPressed: () => s.basculerMode(Mode.passager),
+          onPressed: () => changerEspace(context, Mode.passager),
         ),
         const SizedBox(height: 6),
         Center(
@@ -1664,9 +1683,11 @@ class MesDocumentsEcran extends StatelessWidget {
   }
 }
 
-/// Fiche « Mode conducteur » : ce qu'est le covoiturage.
+/// Fiche « Mode conducteur » : ce qu'est le covoiturage. « J’ai compris »
+/// appelle [onCompris] (le passage dans l'espace conducteur).
 class IntroConducteurEcran extends StatelessWidget {
-  const IntroConducteurEcran({super.key});
+  const IntroConducteurEcran({super.key, this.onCompris});
+  final void Function(BuildContext context)? onCompris;
 
   @override
   Widget build(BuildContext context) {
@@ -1731,7 +1752,14 @@ class IntroConducteurEcran extends StatelessWidget {
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-              child: Btn('J’ai compris', onPressed: () => Navigator.maybePop(context)),
+              child: Btn(
+                'J’ai compris',
+                onPressed: () {
+                  AppScope.read(context).vuIntroConducteur();
+                  final suite = onCompris;
+                  suite == null ? Navigator.maybePop(context) : suite(context);
+                },
+              ),
             ),
           ],
         ),

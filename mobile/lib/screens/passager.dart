@@ -53,7 +53,6 @@ class BasculeMode extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final s = AppScope.of(context);
     Widget pilule(String label, bool actif, VoidCallback? onTap) => Semantics(
       button: true,
       selected: actif,
@@ -82,7 +81,7 @@ class BasculeMode extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          pilule('Passager', !conducteur, conducteur ? () => s.basculerMode(Mode.passager) : null),
+          pilule('Passager', !conducteur, conducteur ? () => changerEspace(context, Mode.passager) : null),
           // L'espace conducteur s'ouvre même avant l'activation du compte :
           // il guide alors vers l'inscription.
           pilule('Conducteur', conducteur, conducteur ? null : () => entrerModeConducteur(context)),

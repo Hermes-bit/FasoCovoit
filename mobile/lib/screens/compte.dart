@@ -813,12 +813,9 @@ class ChoixEspaceEcran extends StatelessWidget {
       label: '$titre. $sous',
       excludeSemantics: true,
       child: Carte(
-        onTap: () {
-          final nav = Navigator.of(context);
-          s.choisirEspace(espace);
-          // Première entrée côté conducteur : la fiche « Mode conducteur ».
-          if (espace == Mode.conducteur) presenterModeConducteur(nav, s);
-        },
+        // Côté conducteur, la première fois : la fiche « Mode conducteur ».
+        onTap: () =>
+            espace == Mode.conducteur ? entrerModeConducteur(context) : changerEspace(context, Mode.passager),
         padding: const EdgeInsets.all(18),
         child: Row(
           children: [
