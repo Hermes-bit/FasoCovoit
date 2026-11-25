@@ -60,107 +60,165 @@ class _EnRouteEcranState extends State<EnRouteEcran> {
     final haut = MediaQuery.paddingOf(context).top;
     final bas = MediaQuery.paddingOf(context).bottom;
     final restant = (t.km * (1 - _progression)).round();
+    final inter = t.depart.ville != t.arrivee.ville;
     return Scaffold(
-      backgroundColor: C.sable2,
-      body: Stack(
+      // Couleur du fond de carte : derrière les coins arrondis de la feuille,
+      // la carte semble continuer.
+      backgroundColor: Plan.terre,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Positioned.fill(
-            top: 56 + haut,
-            bottom: 280,
-            child: CarteDuTrajet(depart: t.depart, arrivee: t.arrivee, progression: _progression),
-          ),
-          Positioned(
-            top: 16 + haut,
-            left: 16,
-            right: 16,
-            child: Row(
+          // La carte occupe tout le haut ; le retour et le suivi flottent
+          // dessus. Elle s'arrête au bord de la feuille : le logo Google et
+          // ses mentions doivent rester visibles.
+          Expanded(
+            child: Stack(
               children: [
-                Material(
-                  color: C.surface,
-                  shape: const CircleBorder(side: BorderSide(color: C.trait, width: 1.5)),
-                  child: IconeBtn(
-                    icon: Icons.chevron_left_rounded,
-                    label: 'Retour',
-                    taille: 28,
-                    onTap: () => Navigator.maybePop(context),
+                Positioned.fill(
+                  child: CarteDuTrajet(
+                    depart: t.depart,
+                    arrivee: t.arrivee,
+                    progression: _progression,
+                    margeHaut: haut + 84,
+                    margeBas: 32,
                   ),
                 ),
-                const SizedBox(width: 8),
-                Expanded(child: _bandeauSuivi(s)),
+                Positioned(
+                  top: 12 + haut,
+                  left: 16,
+                  right: 16,
+                  child: Row(
+                    children: [
+                      DecoratedBox(
+                        decoration: const BoxDecoration(shape: BoxShape.circle, boxShadow: ombreDouce),
+                        child: Material(
+                          color: C.surface,
+                          shape: const CircleBorder(),
+                          child: IconeBtn(
+                            icon: Icons.chevron_left_rounded,
+                            label: 'Retour',
+                            taille: 28,
+                            onTap: () => Navigator.maybePop(context),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(child: _bandeauSuivi(s)),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: Container(
-              padding: EdgeInsets.fromLTRB(20, 20, 20, 22 + bas),
-              decoration: const BoxDecoration(
-                color: C.surface,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-                border: Border(top: BorderSide(color: C.trait, width: 1.5)),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: espacer([
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+          Container(
+            padding: EdgeInsets.fromLTRB(20, 10, 20, 16 + bas),
+            decoration: const BoxDecoration(
+              color: C.surface,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(_rayon)),
+              boxShadow: [BoxShadow(color: Color(0x2E2A1A12), blurRadius: 24, offset: Offset(0, -6))],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 5,
+                    decoration: BoxDecoration(color: C.trait, borderRadius: BorderRadius.circular(999)),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(child: Titre('Arrivée vers ${heure(t.heureArrivee)}', taille: 26)),
+                    const SizedBox(width: 8),
+                    Pastille('Encore $restant km', ton: TonPastille.vert),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                _BarreProgres(_progression),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Expanded(child: Doux(inter ? t.depart.ville : t.depart.quartier)),
+                    Doux(inter ? t.arrivee.ville : t.arrivee.quartier),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                // Le conducteur et sa voiture, pour les reconnaître.
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(color: C.sable, borderRadius: BorderRadius.circular(18)),
+                  child: Row(
                     children: [
+                      Ava(c.initiales, ton: c.ton, taille: 44),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Doux('En route avec ${c.court} · ${c.voiture.split(' ').last} ${c.plaque}'),
-                            Titre('Arrivée vers ${heure(t.heureArrivee)}'),
+                            Text('En route avec ${c.court}', style: T.gras),
+                            Doux(capitaliser(c.vehicule), taille: 13.5),
                           ],
                         ),
                       ),
-                      Doux('$restant km', taille: 14, gras: true),
-                    ],
-                  ),
-                  _BarreProgres(_progression),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: BtnClair('WhatsApp', icon: Icons.share_outlined, onPressed: () => _partager('WhatsApp')),
-                      ),
                       const SizedBox(width: 8),
-                      Expanded(
-                        child: BtnClair('SMS', icon: Icons.sms_outlined, onPressed: () => _partager('un SMS')),
-                      ),
+                      _Plaque(c.plaque),
                     ],
                   ),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Btn(
-                          r.statut == StatutResa.terminee ? 'Noter le trajet' : 'Je suis arrivé${s.femme ? 'e' : ''}',
-                          onPressed: () {
-                            s.arriver(r);
-                            if (r.notee) {
-                              message(context, 'Merci, ce trajet est déjà noté.');
-                            } else {
-                              // Au-dessus du trajet : « Retour » y ramène.
-                              ouvrir(context, NoterEcran(reservation: r));
-                            }
-                          },
-                        ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: BtnClair(
+                        'WhatsApp',
+                        icon: Icons.share_outlined,
+                        hauteur: 48,
+                        onPressed: () => _partager('WhatsApp'),
                       ),
-                      const SizedBox(width: 8),
-                      SizedBox(
-                        width: 128,
-                        child: Btn.sos(
-                          'SOS',
-                          icon: Icons.warning_amber_rounded,
-                          onPressed: () => ouvrir(context, SosEcran(trajet: '${t.titreLong} avec ${c.court}')),
-                        ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: BtnClair(
+                        'SMS',
+                        icon: Icons.sms_outlined,
+                        hauteur: 48,
+                        onPressed: () => _partager('un SMS'),
                       ),
-                    ],
-                  ),
-                ], 12),
-              ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Btn(
+                        r.statut == StatutResa.terminee ? 'Noter le trajet' : 'Je suis arrivé${s.femme ? 'e' : ''}',
+                        onPressed: () {
+                          s.arriver(r);
+                          if (r.notee) {
+                            message(context, 'Merci, ce trajet est déjà noté.');
+                          } else {
+                            // Au-dessus du trajet : « Retour » y ramène.
+                            ouvrir(context, NoterEcran(reservation: r));
+                          }
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      width: 120,
+                      child: Btn.sos(
+                        'SOS',
+                        icon: Icons.warning_amber_rounded,
+                        onPressed: () => ouvrir(context, SosEcran(trajet: '${t.titreLong} avec ${c.court}')),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ],
@@ -168,13 +226,13 @@ class _EnRouteEcranState extends State<EnRouteEcran> {
     );
   }
 
+  /// Rayon des coins de la feuille du bas ; la carte passe dessous.
+  static const _rayon = 28.0;
+
   Widget _bandeauSuivi(AppState s) => Container(
-    padding: const EdgeInsets.fromLTRB(16, 6, 8, 6),
-    decoration: BoxDecoration(
-      color: C.surface,
-      borderRadius: BorderRadius.circular(999),
-      border: Border.all(color: C.trait, width: 1.5),
-    ),
+    height: 48,
+    padding: const EdgeInsets.fromLTRB(16, 0, 8, 0),
+    decoration: BoxDecoration(color: C.surface, borderRadius: BorderRadius.circular(999), boxShadow: ombreDouce),
     child: Row(
       children: [
         Container(
@@ -193,6 +251,30 @@ class _EnRouteEcranState extends State<EnRouteEcran> {
         ),
         Lien(_partage ? 'Arrêter' : 'Partager', onTap: _basculerPartage),
       ],
+    ),
+  );
+}
+
+/// Plaque d'immatriculation, pour reconnaître la voiture.
+class _Plaque extends StatelessWidget {
+  const _Plaque(this.numero);
+  final String numero;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label: 'Plaque $numero',
+    excludeSemantics: true,
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: C.encre, width: 1.5),
+      ),
+      child: Text(
+        numero,
+        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, letterSpacing: .6, color: C.encre),
+      ),
     ),
   );
 }

@@ -948,12 +948,23 @@ class ReglesAnnulationEcran extends StatelessWidget {
 /// Carte du trajet en cours, plein écran : Google Maps au style clair et
 /// coloré si la clé est configurée, sinon carte dessinée dans le même style.
 class CarteDuTrajet extends StatelessWidget {
-  const CarteDuTrajet({super.key, required this.depart, required this.arrivee, this.progression = .58});
+  const CarteDuTrajet({
+    super.key,
+    required this.depart,
+    required this.arrivee,
+    this.progression = .58,
+    this.margeHaut = 24,
+    this.margeBas = 40,
+  });
   final Lieu depart;
   final Lieu arrivee;
   final double progression;
 
+  /// Place laissée en haut et en bas pour ce qui est posé sur la carte.
+  final double margeHaut;
+  final double margeBas;
+
   @override
   Widget build(BuildContext context) =>
-      CarteRoute(depart: depart, arrivee: arrivee, progression: progression, margeHaut: 24, margeBas: 40);
+      CarteRoute(depart: depart, arrivee: arrivee, progression: progression, margeHaut: margeHaut, margeBas: margeBas);
 }
